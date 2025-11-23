@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ứng dụng Vẽ Đồ Thị - Cấu Trúc Rời Rạc</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔵 Ứng dụng Vẽ Đồ Thị - Cấu Trúc Rời Rạc</h1>
+        </header>
+        
+        <div class="main-content">
+            <!-- Panel bên trái -->
+            <div class="left-panel">
+                <div class="control-section">
+                    <h3>⚙️ Loại Đồ Thị</h3>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" id="directedCheckbox" onchange="toggleDirected()" style="margin-right: 8px; width: 18px; height: 18px; cursor: pointer;">
+                            <span style="font-weight: 600;">Đồ thị có hướng</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <h3>➕ Thêm Đỉnh</h3>
+                    <input type="text" id="nodeId" placeholder="Nhập mã đỉnh (A, B, C...)">
+                    <button onclick="addNode()">Thêm Đỉnh</button>
+                </div>
+                
+                <div class="control-section">
+                    <h3>🔗 Thêm Cạnh</h3>
+                    <input type="text" id="node1" placeholder="Đỉnh thứ nhất">
+                    <input type="text" id="node2" placeholder="Đỉnh thứ hai">
+                    <input type="number" id="weight" placeholder="Trọng số" value="1" step="0.1">
+                    <button onclick="addEdge()">Thêm Cạnh</button>
+                </div>
+                
+                <div class="control-section">
+                    <h3>🎨 Bố Cục Tự Động</h3>
+                    <button onclick="applySpringLayout()">Bố Cục Lò Xo</button>
+                    <button onclick="applyCircularLayout()">Bố Cục Vòng Tròn</button>
+                </div>
+                
+                <div class="control-section">
+                    <h3>📊 Thống Kê Đồ Thị</h3>
+                    <div id="stats">
+                        <p>Số đỉnh: <span id="numNodes">0</span></p>
+                        <p>Số cạnh: <span id="numEdges">0</span></p>
+                        <p>Mật độ: <span id="density">0.00</span></p>
+                        <p>Liên thông: <span id="connected">Không</span></p>
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <h3>💾 Lưu & Tải</h3>
+                    <button onclick="showSaveDialog()">💾 Lưu Đồ Thị</button>
+                    <button onclick="showLoadDialog()">📂 Tải Đồ Thị</button>
+                </div>
+                
+                <div class="control-section">
+                    <button class="danger-btn" onclick="clearAll()">🗑️ Xóa Toàn Bộ</button>
+                </div>
+                
+                <div class="control-section instructions">
+                    <h3>💡 Hướng Dẫn Sử Dụng</h3>
+                    <ul>
+                        <li><strong>Ctrl + Click:</strong> Thêm đỉnh mới</li>
+                        <li><strong>Kéo thả đỉnh:</strong> Di chuyển đỉnh</li>
+                        <li><strong>Shift + Click:</strong> Nối hai đỉnh</li>
+                        <li><strong>Chuột phải + Kéo:</strong> Di chuyển khung nhìn</li>
+                        <li><strong>Con lăn chuột:</strong> Phóng to/thu nhỏ</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Canvas vẽ đồ thị -->
+            <div class="canvas-container">
+                <canvas id="graphCanvas" width="800" height="600"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal lưu đồ thị -->
+    <div id="saveModal" class="modal">
+        <div class="modal-content">
+            <h2>💾 Lưu Đồ Thị</h2>
+            <input type="text" id="saveFilename" placeholder="Nhập tên file (không cần .json)" style="width: 100%; padding: 10px; margin: 10px 0; border: 2px solid #ddd; border-radius: 5px;">
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button onclick="saveGraph()" style="flex: 1; padding: 12px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">Lưu</button>
+                <button onclick="closeModal('saveModal')" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">Hủy</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal tải đồ thị -->
+    <div id="loadModal" class="modal">
+        <div class="modal-content">
+            <h2>📂 Tải Đồ Thị</h2>
+            <div id="fileList" style="max-height: 400px; overflow-y: auto; margin: 15px 0;"></div>
+            <button onclick="closeModal('loadModal')" style="width: 100%; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">Đóng</button>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
