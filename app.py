@@ -355,6 +355,55 @@ def delete_saved_graph():
             'message': f'Lỗi khi xóa: {str(e)}'
         })
 
+@app.route('/api/shortest_path', methods=['POST'])
+def shortest_path():
+    try:
+        data = request.json
+        source = data.get('source')
+        target = data.get('target')
+        
+        if not source or not target:
+            return jsonify({
+                'success': False,
+                'message': 'Vui lòng chọn node bắt đầu và node kết thúc'
+            })
+        
+        if source not in graph_data['graph'] or target not in graph_data['graph']:
+            return jsonify({
+                'success': False,
+                'message': 'Node không tồn tại trong đồ thị'
+            })
+        
+        if source == target:
+            return jsonify({
+                'success': True,
+                'path': [source],
+                'distance': 0,
+                'message': f'Node bắt đầu và kết thúc trùng nhau'
+            })
+        
+        try:
+            # Tìm đường đi ngắn nhất sử dụng Dijkstra
+            path = nx.shortest_path(graph_data['graph'], source=source, target=target, weight='weight')
+            distance = nx.shortest_path_length(graph_data['graph'], source=source, target=target, weight='weight')
+            
+            return jsonify({
+                'success': True,
+                'path': path,
+                'distance': round(distance, 2),
+                'message': f'Đường đi ngắn nhất từ {source} đến {target}: {" → ".join(path)} (độ dài: {round(distance, 2)})'
+            })
+        except nx.NetworkXNoPath:
+            return jsonify({
+                'success': False,
+                'message': f'Không tìm thấy đường đi từ {source} đến {target}'
+            })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Lỗi: {str(e)}'
+        })
+
 if __name__ == '__main__':
     # Thêm một số node mẫu
     graph_data['graph'].add_node('A')

@@ -13,6 +13,7 @@ let draggingNode = null;
 let dragOffset = { x: 0, y: 0 };
 let connectingMode = false;
 let connectingFromNode = null;
+let highlightedPath = []; // Lưu đường đi được highlight
 
 // Biến cho zoom và pan
 let scale = 1;
@@ -109,13 +110,25 @@ function drawGraph() {
     
     // Vẽ cạnh
     ctx.lineWidth = 2;
-    ctx.strokeStyle = '#667eea';
     
     graphData.edges.forEach(edge => {
         const sourceNode = graphData.nodes.find(n => n.id === edge.source);
         const targetNode = graphData.nodes.find(n => n.id === edge.target);
         
         if (sourceNode && targetNode) {
+            // Kiểm tra xem cạnh này có nằm trong đường đi ngắn nhất không
+            const isInPath = highlightedPath.length > 0 && 
+                highlightedPath.some((nodeId, idx) => {
+                    if (idx < highlightedPath.length - 1) {
+                        return (nodeId === edge.source && highlightedPath[idx + 1] === edge.target);
+                    }
+                    return false;
+                });
+            
+            // Đổi màu nếu nằm trong đường đi
+            ctx.strokeStyle = isInPath ? '#ff6b6b' : '#667eea';
+            ctx.lineWidth = isInPath ? 4 : 2;
+            
             ctx.beginPath();
             ctx.moveTo(sourceNode.x, sourceNode.y);
             ctx.lineTo(targetNode.x, targetNode.y);
@@ -147,6 +160,7 @@ function drawGraph() {
     graphData.nodes.forEach(node => {
         const isSelected = selectedNode === node.id;
         const isConnecting = connectingFromNode && connectingFromNode.id === node.id;
+        const isInPath = highlightedPath.includes(node.id);
         
         // Vẽ vòng tròn
         ctx.beginPath();
@@ -154,6 +168,8 @@ function drawGraph() {
         
         if (isConnecting) {
             ctx.fillStyle = '#ffc107'; // Màu vàng khi đang nối
+        } else if (isInPath) {
+            ctx.fillStyle = '#ff6b6b'; // Màu đỏ cho đường đi ngắn nhất
         } else if (isSelected) {
             ctx.fillStyle = '#f5576c';
         } else {
@@ -161,8 +177,8 @@ function drawGraph() {
         }
         
         ctx.fill();
-        ctx.strokeStyle = isConnecting ? '#ff6f00' : (isSelected ? '#d62828' : '#457b9d');
-        ctx.lineWidth = isConnecting ? 4 : (isSelected ? 3 : 2);
+        ctx.strokeStyle = isInPath ? '#c92a2a' : (isConnecting ? '#ff6f00' : (isSelected ? '#d62828' : '#457b9d'));
+        ctx.lineWidth = isInPath ? 4 : (isConnecting ? 4 : (isSelected ? 3 : 2));
         ctx.stroke();
         
         // Vẽ label
@@ -772,6 +788,71 @@ document.getElementById('node2').addEventListener('keypress', (e) => {
 document.getElementById('weight').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addEdge();
 });
+
+document.getElementById('sourceNode').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') document.getElementById('targetNode').focus();
+});
+
+document.getElementById('targetNode').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') findShortestPath();
+});
+
+// Tìm đường đi ngắn nhất
+async function findShortestPath() {
+    const source = document.getElementById('sourceNode').value.trim();
+    const target = document.getElementById('targetNode').value.trim();
+    const resultDiv = document.getElementById('pathResult');
+    const resultText = resultDiv.querySelector('p');
+    
+    if (!source || !target) {
+        showNotification('⚠️ Vui lòng nhập đỉnh bắt đầu và đỉnh kết thúc', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/shortest_path', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source, target })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Highlight đường đi
+            highlightedPath = result.path;
+            drawGraph();
+            
+            // Hiển thị kết quả
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#d4edda';
+            resultDiv.style.borderLeft = '4px solid #28a745';
+            resultText.style.color = '#155724';
+            resultText.innerHTML = `
+                <strong>✅ ${result.message}</strong><br>
+                <small>Độ dài: ${result.distance}</small>
+            `;
+            
+            showNotification('✅ Đã tìm thấy đường đi ngắn nhất!', 'success');
+        } else {
+            // Xóa highlight
+            highlightedPath = [];
+            drawGraph();
+            
+            // Hiển thị lỗi
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#f8d7da';
+            resultDiv.style.borderLeft = '4px solid #dc3545';
+            resultText.style.color = '#721c24';
+            resultText.innerHTML = `<strong>❌ ${result.message}</strong>`;
+            
+            showNotification('❌ ' + result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Lỗi khi tìm đường đi:', error);
+        showNotification('❌ Có lỗi xảy ra khi tìm đường đi', 'error');
+    }
+}
 
 // Tải đồ thị khi trang load
 loadGraph();

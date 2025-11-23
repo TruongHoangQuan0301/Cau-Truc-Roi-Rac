@@ -62,6 +62,16 @@
                 </div>
                 
                 <div class="control-section">
+                    <h3>🔍 Đường Đi Ngắn Nhất</h3>
+                    <input type="text" id="sourceNode" placeholder="Đỉnh bắt đầu">
+                    <input type="text" id="targetNode" placeholder="Đỉnh kết thúc">
+                    <button onclick="findShortestPath()">Tìm Đường Đi</button>
+                    <div id="pathResult" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px; display: none;">
+                        <p style="margin: 0; font-size: 14px; color: #495057;"></p>
+                    </div>
+                </div>
+                
+                <div class="control-section">
                     <button class="danger-btn" onclick="clearAll()">🗑️ Xóa Toàn Bộ</button>
                 </div>
                 
