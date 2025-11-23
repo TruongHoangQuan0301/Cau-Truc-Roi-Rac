@@ -57,10 +57,26 @@ def remove_node():
     
     if node_id in graph_data['graph']:
         graph_data['graph'].remove_node(node_id)
-        del graph_data['positions'][node_id]
-        return jsonify({'success': True, 'message': 'Node đã được xóa'})
+        if node_id in graph_data['positions']:
+            del graph_data['positions'][node_id]
+        return jsonify({'success': True, 'message': f'Đã xóa đỉnh {node_id}'})
     
-    return jsonify({'success': False, 'message': 'Node không tồn tại'})
+    return jsonify({'success': False, 'message': 'Đỉnh không tồn tại'})
+
+@app.route('/api/remove_edge', methods=['POST'])
+def remove_edge():
+    data = request.json
+    node1 = data.get('node1')
+    node2 = data.get('node2')
+    
+    if node1 in graph_data['graph'] and node2 in graph_data['graph']:
+        if graph_data['graph'].has_edge(node1, node2):
+            graph_data['graph'].remove_edge(node1, node2)
+            return jsonify({'success': True, 'message': f'Đã xóa cạnh {node1}-{node2}'})
+        else:
+            return jsonify({'success': False, 'message': 'Cạnh không tồn tại'})
+    
+    return jsonify({'success': False, 'message': 'Một hoặc cả hai đỉnh không tồn tại'})
 
 @app.route('/api/get_graph', methods=['GET'])
 def get_graph():
@@ -404,16 +420,166 @@ def shortest_path():
             'message': f'Lỗi: {str(e)}'
         })
 
+@app.route('/api/bfs', methods=['POST'])
+def bfs_traversal():
+    try:
+        data = request.json
+        start_node = data.get('start_node')
+        
+        if not start_node:
+            return jsonify({
+                'success': False,
+                'message': 'Vui lòng chọn đỉnh bắt đầu'
+            })
+        
+        if start_node not in graph_data['graph']:
+            return jsonify({
+                'success': False,
+                'message': 'Đỉnh không tồn tại trong đồ thị'
+            })
+        
+        # Thực hiện BFS
+        bfs_order = list(nx.bfs_tree(graph_data['graph'], start_node).nodes())
+        
+        return jsonify({
+            'success': True,
+            'order': bfs_order,
+            'message': f'BFS từ {start_node}: {" → ".join(bfs_order)}'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Lỗi: {str(e)}'
+        })
+
+@app.route('/api/dfs', methods=['POST'])
+def dfs_traversal():
+    try:
+        data = request.json
+        start_node = data.get('start_node')
+        
+        if not start_node:
+            return jsonify({
+                'success': False,
+                'message': 'Vui lòng chọn đỉnh bắt đầu'
+            })
+        
+        if start_node not in graph_data['graph']:
+            return jsonify({
+                'success': False,
+                'message': 'Đỉnh không tồn tại trong đồ thị'
+            })
+        
+        # Thực hiện DFS
+        dfs_order = list(nx.dfs_tree(graph_data['graph'], start_node).nodes())
+        
+        return jsonify({
+            'success': True,
+            'order': dfs_order,
+            'message': f'DFS từ {start_node}: {" → ".join(dfs_order)}'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Lỗi: {str(e)}'
+        })
+
+@app.route('/api/check_bipartite', methods=['GET'])
+def check_bipartite():
+    try:
+        if graph_data['graph'].number_of_nodes() == 0:
+            return jsonify({
+                'success': False,
+                'message': 'Đồ thị rỗng'
+            })
+        
+        # Kiểm tra đồ thị 2 phía
+        is_bipartite = nx.is_bipartite(graph_data['graph'])
+        
+        if is_bipartite:
+            # Lấy 2 tập đỉnh
+            color_dict = nx.bipartite.color(graph_data['graph'])
+            set1 = [node for node, color in color_dict.items() if color == 0]
+            set2 = [node for node, color in color_dict.items() if color == 1]
+            
+            return jsonify({
+                'success': True,
+                'is_bipartite': True,
+                'set1': set1,
+                'set2': set2,
+                'color_dict': color_dict,
+                'message': f'Đây là đồ thị 2 phía!\nTập 1: {{{", ".join(set1)}}}\nTập 2: {{{", ".join(set2)}}}'
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'is_bipartite': False,
+                'message': 'Đây KHÔNG phải là đồ thị 2 phía'
+            })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Lỗi: {str(e)}'
+        })
+
+@app.route('/api/get_representations', methods=['GET'])
+def get_representations():
+    try:
+        if graph_data['graph'].number_of_nodes() == 0:
+            return jsonify({
+                'success': False,
+                'message': 'Đồ thị rỗng'
+            })
+        
+        # Lấy danh sách các node
+        nodes = sorted(list(graph_data['graph'].nodes()))
+        n = len(nodes)
+        
+        # 1. Ma trận kề (Adjacency Matrix)
+        adj_matrix = []
+        node_to_idx = {node: i for i, node in enumerate(nodes)}
+        
+        for i in range(n):
+            row = [0] * n
+            for j in range(n):
+                if graph_data['graph'].has_edge(nodes[i], nodes[j]):
+                    weight = graph_data['graph'].get_edge_data(nodes[i], nodes[j]).get('weight', 1)
+                    row[j] = weight
+            adj_matrix.append(row)
+        
+        # 2. Danh sách kề (Adjacency List)
+        adj_list = {}
+        for node in nodes:
+            neighbors = []
+            for neighbor in graph_data['graph'].neighbors(node):
+                weight = graph_data['graph'].get_edge_data(node, neighbor).get('weight', 1)
+                neighbors.append({'node': neighbor, 'weight': weight})
+            adj_list[node] = neighbors
+        
+        # 3. Danh sách cạnh (Edge List)
+        edge_list = []
+        for edge in graph_data['graph'].edges():
+            weight = graph_data['graph'].get_edge_data(edge[0], edge[1]).get('weight', 1)
+            edge_list.append({
+                'source': edge[0],
+                'target': edge[1],
+                'weight': weight
+            })
+        
+        return jsonify({
+            'success': True,
+            'nodes': nodes,
+            'adjacency_matrix': adj_matrix,
+            'adjacency_list': adj_list,
+            'edge_list': edge_list,
+            'is_directed': graph_data['is_directed']
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Lỗi: {str(e)}'
+        })
+
 if __name__ == '__main__':
-    # Thêm một số node mẫu
-    graph_data['graph'].add_node('A')
-    graph_data['graph'].add_node('B')
-    graph_data['graph'].add_node('C')
-    graph_data['positions']['A'] = {'x': 200, 'y': 200}
-    graph_data['positions']['B'] = {'x': 600, 'y': 200}
-    graph_data['positions']['C'] = {'x': 400, 'y': 400}
-    graph_data['graph'].add_edge('A', 'B', weight=1)
-    graph_data['graph'].add_edge('B', 'C', weight=2)
-    graph_data['graph'].add_edge('C', 'A', weight=1.5)
-    
     app.run(debug=True, port=5000)
+

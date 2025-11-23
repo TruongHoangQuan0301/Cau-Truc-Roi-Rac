@@ -14,6 +14,10 @@ let dragOffset = { x: 0, y: 0 };
 let connectingMode = false;
 let connectingFromNode = null;
 let highlightedPath = []; // Lưu đường đi được highlight
+let traversalOrder = []; // Lưu thứ tự duyệt đồ thị
+let animationIndex = 0; // Chỉ số animation
+let animationInterval = null; // Interval cho animation
+let bipartiteColors = {}; // Lưu màu cho đồ thị 2 phía
 
 // Biến cho zoom và pan
 let scale = 1;
@@ -161,6 +165,10 @@ function drawGraph() {
         const isSelected = selectedNode === node.id;
         const isConnecting = connectingFromNode && connectingFromNode.id === node.id;
         const isInPath = highlightedPath.includes(node.id);
+        const isInTraversal = traversalOrder.includes(node.id);
+        const traversalIdx = traversalOrder.indexOf(node.id);
+        const isCurrentTraversal = traversalIdx >= 0 && traversalIdx < animationIndex;
+        const bipartiteColor = bipartiteColors[node.id];
         
         // Vẽ vòng tròn
         ctx.beginPath();
@@ -168,6 +176,12 @@ function drawGraph() {
         
         if (isConnecting) {
             ctx.fillStyle = '#ffc107'; // Màu vàng khi đang nối
+        } else if (bipartiteColor === 0) {
+            ctx.fillStyle = '#74c0fc'; // Màu xanh dương cho tập 1
+        } else if (bipartiteColor === 1) {
+            ctx.fillStyle = '#ffa94d'; // Màu cam cho tập 2
+        } else if (isCurrentTraversal) {
+            ctx.fillStyle = '#51cf66'; // Màu xanh lá cho node đã duyệt
         } else if (isInPath) {
             ctx.fillStyle = '#ff6b6b'; // Màu đỏ cho đường đi ngắn nhất
         } else if (isSelected) {
@@ -177,9 +191,18 @@ function drawGraph() {
         }
         
         ctx.fill();
-        ctx.strokeStyle = isInPath ? '#c92a2a' : (isConnecting ? '#ff6f00' : (isSelected ? '#d62828' : '#457b9d'));
-        ctx.lineWidth = isInPath ? 4 : (isConnecting ? 4 : (isSelected ? 3 : 2));
+        ctx.strokeStyle = bipartiteColor !== undefined ? '#1971c2' : (isCurrentTraversal ? '#2f9e44' : (isInPath ? '#c92a2a' : (isConnecting ? '#ff6f00' : (isSelected ? '#d62828' : '#457b9d'))));
+        ctx.lineWidth = bipartiteColor !== undefined ? 4 : (isCurrentTraversal ? 4 : (isInPath ? 4 : (isConnecting ? 4 : (isSelected ? 3 : 2))));
         ctx.stroke();
+        
+        // Vẽ số thứ tự duyệt nếu có
+        if (isCurrentTraversal) {
+            ctx.fillStyle = '#2f9e44';
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(traversalIdx + 1, node.x, node.y - 30);
+        }
         
         // Vẽ label
         ctx.fillStyle = '#1d3557';
@@ -331,6 +354,78 @@ async function addEdge() {
     } catch (error) {
         console.error('Lỗi khi thêm cạnh:', error);
         showNotification('❌ Có lỗi xảy ra khi thêm cạnh', 'error');
+    }
+}
+
+// Xóa đỉnh
+async function removeNode() {
+    const nodeId = document.getElementById('removeNodeId').value.trim();
+    
+    if (!nodeId) {
+        alert('⚠️ Vui lòng nhập đỉnh cần xóa');
+        return;
+    }
+    
+    if (!confirm(`⚠️ Bạn có chắc muốn xóa đỉnh ${nodeId}? Tất cả cạnh liên quan sẽ bị xóa.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/remove_node', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ node_id: nodeId })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            document.getElementById('removeNodeId').value = '';
+            await loadGraph();
+            showNotification('✅ ' + result.message, 'success');
+        } else {
+            alert('❌ ' + result.message);
+        }
+    } catch (error) {
+        console.error('Lỗi khi xóa đỉnh:', error);
+        showNotification('❌ Có lỗi xảy ra khi xóa đỉnh', 'error');
+    }
+}
+
+// Xóa cạnh
+async function removeEdge() {
+    const node1 = document.getElementById('removeEdge1').value.trim();
+    const node2 = document.getElementById('removeEdge2').value.trim();
+    
+    if (!node1 || !node2) {
+        alert('⚠️ Vui lòng nhập đầy đủ hai đỉnh');
+        return;
+    }
+    
+    if (!confirm(`⚠️ Bạn có chắc muốn xóa cạnh ${node1}-${node2}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/remove_edge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ node1: node1, node2: node2 })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            document.getElementById('removeEdge1').value = '';
+            document.getElementById('removeEdge2').value = '';
+            await loadGraph();
+            showNotification('✅ ' + result.message, 'success');
+        } else {
+            alert('❌ ' + result.message);
+        }
+    } catch (error) {
+        console.error('Lỗi khi xóa cạnh:', error);
+        showNotification('❌ Có lỗi xảy ra khi xóa cạnh', 'error');
     }
 }
 
@@ -797,12 +892,19 @@ document.getElementById('targetNode').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') findShortestPath();
 });
 
+document.getElementById('traversalStart').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') runBFS();
+});
+
 // Tìm đường đi ngắn nhất
 async function findShortestPath() {
     const source = document.getElementById('sourceNode').value.trim();
     const target = document.getElementById('targetNode').value.trim();
     const resultDiv = document.getElementById('pathResult');
     const resultText = resultDiv.querySelector('p');
+    
+    // Xóa animation duyệt nếu có
+    stopTraversalAnimation();
     
     if (!source || !target) {
         showNotification('⚠️ Vui lòng nhập đỉnh bắt đầu và đỉnh kết thúc', 'error');
@@ -851,6 +953,285 @@ async function findShortestPath() {
     } catch (error) {
         console.error('Lỗi khi tìm đường đi:', error);
         showNotification('❌ Có lỗi xảy ra khi tìm đường đi', 'error');
+    }
+}
+
+// Dừng animation duyệt
+function stopTraversalAnimation() {
+    if (animationInterval) {
+        clearInterval(animationInterval);
+        animationInterval = null;
+    }
+    traversalOrder = [];
+    animationIndex = 0;
+}
+
+// Xóa tất cả highlight
+function clearAllHighlights() {
+    highlightedPath = [];
+    bipartiteColors = {};
+    stopTraversalAnimation();
+}
+
+// BFS - Duyệt theo chiều rộng
+async function runBFS() {
+    const startNode = document.getElementById('traversalStart').value.trim();
+    const resultDiv = document.getElementById('traversalResult');
+    const resultText = resultDiv.querySelector('p');
+    
+    // Xóa highlight đường đi ngắn nhất
+    highlightedPath = [];
+    stopTraversalAnimation();
+    
+    if (!startNode) {
+        showNotification('⚠️ Vui lòng nhập đỉnh bắt đầu', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/bfs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ start_node: startNode })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Bắt đầu animation
+            traversalOrder = result.order;
+            animationIndex = 0;
+            
+            animationInterval = setInterval(() => {
+                animationIndex++;
+                drawGraph();
+                
+                if (animationIndex >= traversalOrder.length) {
+                    clearInterval(animationInterval);
+                    animationInterval = null;
+                }
+            }, 500); // 500ms mỗi bước
+            
+            // Hiển thị kết quả
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#d1ecf1';
+            resultDiv.style.borderLeft = '4px solid #0c5460';
+            resultText.style.color = '#0c5460';
+            resultText.innerHTML = `<strong>🔵 ${result.message}</strong>`;
+            
+            showNotification('✅ Đang thực hiện BFS...', 'success');
+        } else {
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#f8d7da';
+            resultDiv.style.borderLeft = '4px solid #dc3545';
+            resultText.style.color = '#721c24';
+            resultText.innerHTML = `<strong>❌ ${result.message}</strong>`;
+            
+            showNotification('❌ ' + result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Lỗi khi thực hiện BFS:', error);
+        showNotification('❌ Có lỗi xảy ra khi thực hiện BFS', 'error');
+    }
+}
+
+// DFS - Duyệt theo chiều sâu
+async function runDFS() {
+    const startNode = document.getElementById('traversalStart').value.trim();
+    const resultDiv = document.getElementById('traversalResult');
+    const resultText = resultDiv.querySelector('p');
+    
+    // Xóa highlight đường đi ngắn nhất
+    highlightedPath = [];
+    stopTraversalAnimation();
+    
+    if (!startNode) {
+        showNotification('⚠️ Vui lòng nhập đỉnh bắt đầu', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/dfs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ start_node: startNode })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Bắt đầu animation
+            traversalOrder = result.order;
+            animationIndex = 0;
+            
+            animationInterval = setInterval(() => {
+                animationIndex++;
+                drawGraph();
+                
+                if (animationIndex >= traversalOrder.length) {
+                    clearInterval(animationInterval);
+                    animationInterval = null;
+                }
+            }, 500); // 500ms mỗi bước
+            
+            // Hiển thị kết quả
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#d1ecf1';
+            resultDiv.style.borderLeft = '4px solid #0c5460';
+            resultText.style.color = '#0c5460';
+            resultText.innerHTML = `<strong>🟢 ${result.message}</strong>`;
+            
+            showNotification('✅ Đang thực hiện DFS...', 'success');
+        } else {
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#f8d7da';
+            resultDiv.style.borderLeft = '4px solid #dc3545';
+            resultText.style.color = '#721c24';
+            resultText.innerHTML = `<strong>❌ ${result.message}</strong>`;
+            
+            showNotification('❌ ' + result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Lỗi khi thực hiện DFS:', error);
+        showNotification('❌ Có lỗi xảy ra khi thực hiện DFS', 'error');
+    }
+}
+
+// Kiểm tra đồ thị 2 phía
+async function checkBipartite() {
+    const resultDiv = document.getElementById('bipartiteResult');
+    const resultText = resultDiv.querySelector('p');
+    
+    // Xóa các highlight khác
+    clearAllHighlights();
+    
+    try {
+        const response = await fetch('/api/check_bipartite');
+        const result = await response.json();
+        
+        if (result.success) {
+            if (result.is_bipartite) {
+                // Highlight 2 tập đỉnh với màu khác nhau
+                bipartiteColors = result.color_dict;
+                drawGraph();
+                
+                // Hiển thị kết quả
+                resultDiv.style.display = 'block';
+                resultDiv.style.background = '#d4edda';
+                resultDiv.style.borderLeft = '4px solid #28a745';
+                resultText.style.color = '#155724';
+                resultText.innerHTML = `<strong>✅ ${result.message}</strong>`;
+                
+                showNotification('✅ Đây là đồ thị 2 phía!', 'success');
+            } else {
+                // Xóa highlight
+                bipartiteColors = {};
+                drawGraph();
+                
+                // Hiển thị kết quả
+                resultDiv.style.display = 'block';
+                resultDiv.style.background = '#f8d7da';
+                resultDiv.style.borderLeft = '4px solid #dc3545';
+                resultText.style.color = '#721c24';
+                resultText.innerHTML = `<strong>❌ ${result.message}</strong>`;
+                
+                showNotification('❌ Không phải đồ thị 2 phía', 'error');
+            }
+        } else {
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#fff3cd';
+            resultDiv.style.borderLeft = '4px solid #ffc107';
+            resultText.style.color = '#856404';
+            resultText.innerHTML = `<strong>⚠️ ${result.message}</strong>`;
+        }
+    } catch (error) {
+        console.error('Lỗi khi kiểm tra đồ thị 2 phía:', error);
+        showNotification('❌ Có lỗi xảy ra', 'error');
+    }
+}
+
+// Hiển thị các biểu diễn đồ thị
+async function showRepresentations() {
+    try {
+        const response = await fetch('/api/get_representations');
+        const result = await response.json();
+        
+        if (!result.success) {
+            alert('❌ ' + result.message);
+            return;
+        }
+        
+        const nodes = result.nodes;
+        const matrix = result.adjacency_matrix;
+        const adjList = result.adjacency_list;
+        const edgeList = result.edge_list;
+        const isDirected = result.is_directed;
+        
+        // 1. Ma trận kề
+        let matrixHTML = '<table style="border-collapse: collapse; margin: 0 auto;">';
+        matrixHTML += '<tr><th style="border: 1px solid #ddd; padding: 8px; background: #667eea; color: white;"></th>';
+        nodes.forEach(node => {
+            matrixHTML += `<th style="border: 1px solid #ddd; padding: 8px; background: #667eea; color: white;">${node}</th>`;
+        });
+        matrixHTML += '</tr>';
+        
+        nodes.forEach((node, i) => {
+            matrixHTML += `<tr><th style="border: 1px solid #ddd; padding: 8px; background: #667eea; color: white;">${node}</th>`;
+            matrix[i].forEach(val => {
+                const cellColor = val > 0 ? '#d4edda' : '#fff';
+                matrixHTML += `<td style="border: 1px solid #ddd; padding: 8px; text-align: center; background: ${cellColor};">${val}</td>`;
+            });
+            matrixHTML += '</tr>';
+        });
+        matrixHTML += '</table>';
+        document.getElementById('matrixRepresentation').innerHTML = matrixHTML;
+        
+        // 2. Danh sách kề
+        let listHTML = '<div style="font-family: monospace; line-height: 1.8;">';
+        for (const node in adjList) {
+            const neighbors = adjList[node];
+            if (neighbors.length === 0) {
+                listHTML += `<div><strong>${node}:</strong> ∅ (không có đỉnh kề)</div>`;
+            } else {
+                const neighborStr = neighbors.map(n => 
+                    n.weight !== 1 ? `${n.node}(${n.weight})` : n.node
+                ).join(', ');
+                listHTML += `<div><strong>${node}:</strong> {${neighborStr}}</div>`;
+            }
+        }
+        listHTML += '</div>';
+        document.getElementById('listRepresentation').innerHTML = listHTML;
+        
+        // 3. Danh sách cạnh
+        let edgeHTML = '<div style="font-family: monospace; line-height: 1.8;">';
+        edgeHTML += `<div style="margin-bottom: 10px;"><strong>Tổng số cạnh:</strong> ${edgeList.length}</div>`;
+        edgeHTML += '<table style="border-collapse: collapse; width: 100%;">';
+        edgeHTML += `<tr>
+            <th style="border: 1px solid #ddd; padding: 8px; background: #667eea; color: white;">STT</th>
+            <th style="border: 1px solid #ddd; padding: 8px; background: #667eea; color: white;">Đỉnh nguồn</th>
+            <th style="border: 1px solid #ddd; padding: 8px; background: #667eea; color: white;">${isDirected ? '→' : '↔'}</th>
+            <th style="border: 1px solid #ddd; padding: 8px; background: #667eea; color: white;">Đỉnh đích</th>
+            <th style="border: 1px solid #ddd; padding: 8px; background: #667eea; color: white;">Trọng số</th>
+        </tr>`;
+        
+        edgeList.forEach((edge, idx) => {
+            edgeHTML += `<tr>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${idx + 1}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${edge.source}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${isDirected ? '→' : '↔'}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${edge.target}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${edge.weight}</td>
+            </tr>`;
+        });
+        edgeHTML += '</table></div>';
+        document.getElementById('edgeRepresentation').innerHTML = edgeHTML;
+        
+        // Hiển thị modal
+        document.getElementById('representationModal').style.display = 'block';
+        
+    } catch (error) {
+        console.error('Lỗi khi lấy biểu diễn:', error);
+        showNotification('❌ Có lỗi xảy ra', 'error');
     }
 }
 

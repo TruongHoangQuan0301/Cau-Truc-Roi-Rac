@@ -40,9 +40,14 @@
                 </div>
                 
                 <div class="control-section">
-                    <h3>🎨 Bố Cục Tự Động</h3>
-                    <button onclick="applySpringLayout()">Bố Cục Lò Xo</button>
-                    <button onclick="applyCircularLayout()">Bố Cục Vòng Tròn</button>
+                    <h3>❌ Xóa Đỉnh & Cạnh</h3>
+                    <input type="text" id="removeNodeId" placeholder="Đỉnh cần xóa">
+                    <button onclick="removeNode()" class="danger-btn">Xóa Đỉnh</button>
+                    <div style="margin-top: 10px;">
+                        <input type="text" id="removeEdge1" placeholder="Đỉnh 1">
+                        <input type="text" id="removeEdge2" placeholder="Đỉnh 2">
+                        <button onclick="removeEdge()" class="danger-btn">Xóa Cạnh</button>
+                    </div>
                 </div>
                 
                 <div class="control-section">
@@ -53,6 +58,19 @@
                         <p>Mật độ: <span id="density">0.00</span></p>
                         <p>Liên thông: <span id="connected">Không</span></p>
                     </div>
+                </div>
+                
+                <div class="control-section">
+                    <h3>🔍 Kiểm Tra Đồ Thị</h3>
+                    <button onclick="checkBipartite()">Kiểm Tra Đồ Thị 2 Phía</button>
+                    <div id="bipartiteResult" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px; display: none;">
+                        <p style="margin: 0; font-size: 14px; color: #495057; white-space: pre-line;"></p>
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <h3>📋 Biểu Diễn Đồ Thị</h3>
+                    <button onclick="showRepresentations()">Xem Các Biểu Diễn</button>
                 </div>
                 
                 <div class="control-section">
@@ -67,6 +85,16 @@
                     <input type="text" id="targetNode" placeholder="Đỉnh kết thúc">
                     <button onclick="findShortestPath()">Tìm Đường Đi</button>
                     <div id="pathResult" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px; display: none;">
+                        <p style="margin: 0; font-size: 14px; color: #495057;"></p>
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <h3>🌲 Duyệt Đồ Thị</h3>
+                    <input type="text" id="traversalStart" placeholder="Đỉnh bắt đầu">
+                    <button onclick="runBFS()">BFS - Duyệt Theo Chiều Rộng</button>
+                    <button onclick="runDFS()">DFS - Duyệt Theo Chiều Sâu</button>
+                    <div id="traversalResult" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px; display: none;">
                         <p style="margin: 0; font-size: 14px; color: #495057;"></p>
                     </div>
                 </div>
@@ -112,6 +140,30 @@
             <h2>📂 Tải Đồ Thị</h2>
             <div id="fileList" style="max-height: 400px; overflow-y: auto; margin: 15px 0;"></div>
             <button onclick="closeModal('loadModal')" style="width: 100%; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">Đóng</button>
+        </div>
+    </div>
+    
+    <!-- Modal biểu diễn đồ thị -->
+    <div id="representationModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <h2>📋 Các Phương Pháp Biểu Diễn Đồ Thị</h2>
+            
+            <div style="margin: 20px 0;">
+                <h3 style="color: #495057; border-bottom: 2px solid #667eea; padding-bottom: 10px;">1️⃣ Ma Trận Kề (Adjacency Matrix)</h3>
+                <div id="matrixRepresentation" style="overflow-x: auto; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;"></div>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <h3 style="color: #495057; border-bottom: 2px solid #667eea; padding-bottom: 10px;">2️⃣ Danh Sách Kề (Adjacency List)</h3>
+                <div id="listRepresentation" style="overflow-x: auto; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;"></div>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <h3 style="color: #495057; border-bottom: 2px solid #667eea; padding-bottom: 10px;">3️⃣ Danh Sách Cạnh (Edge List)</h3>
+                <div id="edgeRepresentation" style="overflow-x: auto; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;"></div>
+            </div>
+            
+            <button onclick="closeModal('representationModal')" style="width: 100%; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; margin-top: 15px;">Đóng</button>
         </div>
     </div>
     
