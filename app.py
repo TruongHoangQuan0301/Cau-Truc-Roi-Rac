@@ -580,6 +580,266 @@ def get_representations():
             'message': f'Lỗi: {str(e)}'
         })
 
+@app.route('/api/prim_mst', methods=['GET'])
+def prim_mst():
+    try:
+        if graph_data['graph'].number_of_nodes() == 0:
+            return jsonify({
+                'success': False,
+                'message': 'Đồ thị rỗng'
+            })
+        
+        if graph_data['is_directed']:
+            return jsonify({
+                'success': False,
+                'message': 'Thuật toán Prim chỉ áp dụng cho đồ thị vô hướng'
+            })
+        
+        if not nx.is_connected(graph_data['graph']):
+            return jsonify({
+                'success': False,
+                'message': 'Đồ thị không liên thông'
+            })
+        
+        # Tính MST bằng Prim
+        mst = nx.minimum_spanning_tree(graph_data['graph'], algorithm='prim', weight='weight')
+        
+        mst_edges = []
+        total_weight = 0
+        for edge in mst.edges():
+            weight = graph_data['graph'].get_edge_data(edge[0], edge[1]).get('weight', 1)
+            mst_edges.append({
+                'source': edge[0],
+                'target': edge[1],
+                'weight': weight
+            })
+            total_weight += weight
+        
+        return jsonify({
+            'success': True,
+            'edges': mst_edges,
+            'total_weight': round(total_weight, 2),
+            'message': f'Cây khung nhỏ nhất (Prim)\nTổng trọng số: {round(total_weight, 2)}'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Lỗi: {str(e)}'
+        })
+
+@app.route('/api/kruskal_mst', methods=['GET'])
+def kruskal_mst():
+    try:
+        if graph_data['graph'].number_of_nodes() == 0:
+            return jsonify({
+                'success': False,
+                'message': 'Đồ thị rỗng'
+            })
+        
+        if graph_data['is_directed']:
+            return jsonify({
+                'success': False,
+                'message': 'Thuật toán Kruskal chỉ áp dụng cho đồ thị vô hướng'
+            })
+        
+        if not nx.is_connected(graph_data['graph']):
+            return jsonify({
+                'success': False,
+                'message': 'Đồ thị không liên thông'
+            })
+        
+        # Tính MST bằng Kruskal
+        mst = nx.minimum_spanning_tree(graph_data['graph'], algorithm='kruskal', weight='weight')
+        
+        mst_edges = []
+        total_weight = 0
+        for edge in mst.edges():
+            weight = graph_data['graph'].get_edge_data(edge[0], edge[1]).get('weight', 1)
+            mst_edges.append({
+                'source': edge[0],
+                'target': edge[1],
+                'weight': weight
+            })
+            total_weight += weight
+        
+        return jsonify({
+            'success': True,
+            'edges': mst_edges,
+            'total_weight': round(total_weight, 2),
+            'message': f'Cây khung nhỏ nhất (Kruskal)\nTổng trọng số: {round(total_weight, 2)}'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Lỗi: {str(e)}'
+        })
+
+@app.route('/api/eulerian_path', methods=['GET'])
+def eulerian_path():
+    try:
+        if graph_data['graph'].number_of_nodes() == 0:
+            return jsonify({
+                'success': False,
+                'message': 'Đồ thị rỗng'
+            })
+        
+        # Kiểm tra đồ thị Euler (Fleury)
+        if graph_data['is_directed']:
+            if nx.is_eulerian(graph_data['graph']):
+                path = list(nx.eulerian_circuit(graph_data['graph']))
+                path_nodes = [path[0][0]] + [edge[1] for edge in path]
+                return jsonify({
+                    'success': True,
+                    'path': path_nodes,
+                    'edges': [{'source': e[0], 'target': e[1]} for e in path],
+                    'is_circuit': True,
+                    'algorithm': 'fleury',
+                    'message': f'Chu trình Euler (Fleury): {" → ".join(path_nodes)}'
+                })
+            elif nx.has_eulerian_path(graph_data['graph']):
+                path = list(nx.eulerian_path(graph_data['graph']))
+                path_nodes = [path[0][0]] + [edge[1] for edge in path]
+                return jsonify({
+                    'success': True,
+                    'path': path_nodes,
+                    'edges': [{'source': e[0], 'target': e[1]} for e in path],
+                    'is_circuit': False,
+                    'algorithm': 'fleury',
+                    'message': f'Đường đi Euler (Fleury): {" → ".join(path_nodes)}'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': 'Đồ thị không có đường đi Euler'
+                })
+        else:
+            if nx.is_eulerian(graph_data['graph']):
+                path = list(nx.eulerian_circuit(graph_data['graph']))
+                path_nodes = [path[0][0]] + [edge[1] for edge in path]
+                return jsonify({
+                    'success': True,
+                    'path': path_nodes,
+                    'edges': [{'source': e[0], 'target': e[1]} for e in path],
+                    'is_circuit': True,
+                    'algorithm': 'fleury',
+                    'message': f'Chu trình Euler (Fleury): {" → ".join(path_nodes)}'
+                })
+            elif nx.has_eulerian_path(graph_data['graph']):
+                path = list(nx.eulerian_path(graph_data['graph']))
+                path_nodes = [path[0][0]] + [edge[1] for edge in path]
+                return jsonify({
+                    'success': True,
+                    'path': path_nodes,
+                    'edges': [{'source': e[0], 'target': e[1]} for e in path],
+                    'is_circuit': False,
+                    'algorithm': 'fleury',
+                    'message': f'Đường đi Euler (Fleury): {" → ".join(path_nodes)}'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': 'Đồ thị không có đường đi Euler'
+                })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Lỗi: {str(e)}'
+        })
+
+@app.route('/api/hierholzer', methods=['GET'])
+def hierholzer():
+    try:
+        if graph_data['graph'].number_of_nodes() == 0:
+            return jsonify({
+                'success': False,
+                'message': 'Đồ thị rỗng'
+            })
+        
+        # Hierholzer - chỉ cho chu trình Euler
+        if not nx.is_eulerian(graph_data['graph']):
+            return jsonify({
+                'success': False,
+                'message': 'Hierholzer chỉ áp dụng cho chu trình Euler (tất cả đỉnh có bậc chẵn)'
+            })
+        
+        path = list(nx.eulerian_circuit(graph_data['graph']))
+        path_nodes = [path[0][0]] + [edge[1] for edge in path]
+        
+        return jsonify({
+            'success': True,
+            'path': path_nodes,
+            'edges': [{'source': e[0], 'target': e[1]} for e in path],
+            'is_circuit': True,
+            'algorithm': 'hierholzer',
+            'message': f'Chu trình Euler (Hierholzer): {" → ".join(path_nodes)}'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Lỗi: {str(e)}'
+        })
+
+@app.route('/api/ford_fulkerson', methods=['POST'])
+def ford_fulkerson():
+    try:
+        data = request.json
+        source = data.get('source')
+        sink = data.get('sink')
+        
+        if not source or not sink:
+            return jsonify({
+                'success': False,
+                'message': 'Vui lòng chọn đỉnh nguồn (source) và đỉnh đích (sink)'
+            })
+        
+        if source not in graph_data['graph'] or sink not in graph_data['graph']:
+            return jsonify({
+                'success': False,
+                'message': 'Đỉnh không tồn tại trong đồ thị'
+            })
+        
+        if source == sink:
+            return jsonify({
+                'success': False,
+                'message': 'Đỉnh nguồn và đỉnh đích phải khác nhau'
+            })
+        
+        if not graph_data['is_directed']:
+            return jsonify({
+                'success': False,
+                'message': 'Ford-Fulkerson yêu cầu đồ thị có hướng'
+            })
+        
+        # Tạo đồ thị với capacity (trọng số = capacity)
+        flow_value, flow_dict = nx.maximum_flow(graph_data['graph'], source, sink, capacity='weight')
+        
+        # Lấy các cạnh có flow > 0
+        flow_edges = []
+        for u in flow_dict:
+            for v in flow_dict[u]:
+                if flow_dict[u][v] > 0:
+                    capacity = graph_data['graph'].get_edge_data(u, v).get('weight', 1)
+                    flow_edges.append({
+                        'source': u,
+                        'target': v,
+                        'flow': round(flow_dict[u][v], 2),
+                        'capacity': capacity
+                    })
+        
+        return jsonify({
+            'success': True,
+            'max_flow': round(flow_value, 2),
+            'flow_edges': flow_edges,
+            'message': f'Luồng cực đại từ {source} đến {sink}: {round(flow_value, 2)}'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Lỗi: {str(e)}'
+        })
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    import os
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
 

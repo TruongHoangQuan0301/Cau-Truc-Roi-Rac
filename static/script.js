@@ -18,6 +18,9 @@ let traversalOrder = []; // Lưu thứ tự duyệt đồ thị
 let animationIndex = 0; // Chỉ số animation
 let animationInterval = null; // Interval cho animation
 let bipartiteColors = {}; // Lưu màu cho đồ thị 2 phía
+let mstEdges = []; // Lưu các cạnh của MST
+let eulerianEdges = []; // Lưu các cạnh của đường đi Euler
+let flowEdges = []; // Lưu các cạnh của luồng cực đại
 
 // Biến cho zoom và pan
 let scale = 1;
@@ -129,9 +132,40 @@ function drawGraph() {
                     return false;
                 });
             
-            // Đổi màu nếu nằm trong đường đi
-            ctx.strokeStyle = isInPath ? '#ff6b6b' : '#667eea';
-            ctx.lineWidth = isInPath ? 4 : 2;
+            // Kiểm tra xem cạnh này có trong MST không
+            const isInMST = mstEdges.some(e => 
+                (e.source === edge.source && e.target === edge.target) ||
+                (e.source === edge.target && e.target === edge.source)
+            );
+            
+            // Kiểm tra xem cạnh này có trong đường đi Euler không
+            const eulerIdx = eulerianEdges.findIndex(e =>
+                (e.source === edge.source && e.target === edge.target) ||
+                (!graphData.is_directed && e.source === edge.target && e.target === edge.source)
+            );
+            const isInEuler = eulerIdx >= 0 && eulerIdx < animationIndex;
+            
+            // Kiểm tra xem cạnh này có trong flow không
+            const flowEdge = flowEdges.find(e => e.source === edge.source && e.target === edge.target);
+            const isInFlow = flowEdge !== undefined;
+            
+            // Đổi màu theo loại highlight
+            if (isInMST) {
+                ctx.strokeStyle = '#20c997';
+                ctx.lineWidth = 4;
+            } else if (isInEuler) {
+                ctx.strokeStyle = '#e64980';
+                ctx.lineWidth = 4;
+            } else if (isInFlow) {
+                ctx.strokeStyle = '#fd7e14';
+                ctx.lineWidth = 4;
+            } else if (isInPath) {
+                ctx.strokeStyle = '#ff6b6b';
+                ctx.lineWidth = 4;
+            } else {
+                ctx.strokeStyle = '#667eea';
+                ctx.lineWidth = 2;
+            }
             
             ctx.beginPath();
             ctx.moveTo(sourceNode.x, sourceNode.y);
@@ -151,11 +185,20 @@ function drawGraph() {
                 ctx.fillStyle = 'white';
                 ctx.fillRect(midX - 15, midY - 10, 30, 20);
                 
-                ctx.fillStyle = '#28a745';
-                ctx.font = 'bold 12px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(edge.weight.toFixed(1), midX, midY);
+                // Hiển thị flow/capacity nếu có
+                if (flowEdge) {
+                    ctx.fillStyle = '#fd7e14';
+                    ctx.font = 'bold 11px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(`${flowEdge.flow}/${flowEdge.capacity}`, midX, midY);
+                } else {
+                    ctx.fillStyle = '#28a745';
+                    ctx.font = 'bold 12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(edge.weight.toFixed(1), midX, midY);
+                }
             }
         }
     });
@@ -970,6 +1013,9 @@ function stopTraversalAnimation() {
 function clearAllHighlights() {
     highlightedPath = [];
     bipartiteColors = {};
+    mstEdges = [];
+    eulerianEdges = [];
+    flowEdges = [];
     stopTraversalAnimation();
 }
 
@@ -1231,6 +1277,225 @@ async function showRepresentations() {
         
     } catch (error) {
         console.error('Lỗi khi lấy biểu diễn:', error);
+        showNotification('❌ Có lỗi xảy ra', 'error');
+    }
+}
+
+// Thuật toán Prim - Cây khung nhỏ nhất
+async function runPrim() {
+    const resultDiv = document.getElementById('algorithmResult');
+    const resultText = resultDiv.querySelector('p');
+    
+    clearAllHighlights();
+    
+    try {
+        const response = await fetch('/api/prim_mst');
+        const result = await response.json();
+        
+        if (result.success) {
+            mstEdges = result.edges;
+            drawGraph();
+            
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#d1f2eb';
+            resultDiv.style.borderLeft = '4px solid #20c997';
+            resultText.style.color = '#0c5460';
+            resultText.innerHTML = `<strong>🌳 ${result.message}</strong>`;
+            
+            showNotification('✅ Đã tìm cây khung nhỏ nhất (Prim)!', 'success');
+        } else {
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#f8d7da';
+            resultDiv.style.borderLeft = '4px solid #dc3545';
+            resultText.style.color = '#721c24';
+            resultText.innerHTML = `<strong>❌ ${result.message}</strong>`;
+            
+            showNotification('❌ ' + result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Lỗi khi thực hiện Prim:', error);
+        showNotification('❌ Có lỗi xảy ra', 'error');
+    }
+}
+
+// Thuật toán Kruskal - Cây khung nhỏ nhất
+async function runKruskal() {
+    const resultDiv = document.getElementById('algorithmResult');
+    const resultText = resultDiv.querySelector('p');
+    
+    clearAllHighlights();
+    
+    try {
+        const response = await fetch('/api/kruskal_mst');
+        const result = await response.json();
+        
+        if (result.success) {
+            mstEdges = result.edges;
+            drawGraph();
+            
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#d1f2eb';
+            resultDiv.style.borderLeft = '4px solid #20c997';
+            resultText.style.color = '#0c5460';
+            resultText.innerHTML = `<strong>🌳 ${result.message}</strong>`;
+            
+            showNotification('✅ Đã tìm cây khung nhỏ nhất (Kruskal)!', 'success');
+        } else {
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#f8d7da';
+            resultDiv.style.borderLeft = '4px solid #dc3545';
+            resultText.style.color = '#721c24';
+            resultText.innerHTML = `<strong>❌ ${result.message}</strong>`;
+            
+            showNotification('❌ ' + result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Lỗi khi thực hiện Kruskal:', error);
+        showNotification('❌ Có lỗi xảy ra', 'error');
+    }
+}
+
+// Thuật toán Fleury - Đường đi Euler
+async function runFleury() {
+    const resultDiv = document.getElementById('algorithmResult');
+    const resultText = resultDiv.querySelector('p');
+    
+    clearAllHighlights();
+    
+    try {
+        const response = await fetch('/api/eulerian_path');
+        const result = await response.json();
+        
+        if (result.success) {
+            eulerianEdges = result.edges;
+            animationIndex = 0;
+            
+            // Animation từng cạnh
+            animationInterval = setInterval(() => {
+                animationIndex++;
+                drawGraph();
+                
+                if (animationIndex >= eulerianEdges.length) {
+                    clearInterval(animationInterval);
+                    animationInterval = null;
+                }
+            }, 600);
+            
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#f3d7f5';
+            resultDiv.style.borderLeft = '4px solid #e64980';
+            resultText.style.color = '#721c24';
+            resultText.innerHTML = `<strong>🔄 ${result.message}</strong>`;
+            
+            showNotification('✅ Đã tìm đường đi Euler (Fleury)!', 'success');
+        } else {
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#f8d7da';
+            resultDiv.style.borderLeft = '4px solid #dc3545';
+            resultText.style.color = '#721c24';
+            resultText.innerHTML = `<strong>❌ ${result.message}</strong>`;
+            
+            showNotification('❌ ' + result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Lỗi khi thực hiện Fleury:', error);
+        showNotification('❌ Có lỗi xảy ra', 'error');
+    }
+}
+
+// Thuật toán Hierholzer - Chu trình Euler
+async function runHierholzer() {
+    const resultDiv = document.getElementById('algorithmResult');
+    const resultText = resultDiv.querySelector('p');
+    
+    clearAllHighlights();
+    
+    try {
+        const response = await fetch('/api/hierholzer');
+        const result = await response.json();
+        
+        if (result.success) {
+            eulerianEdges = result.edges;
+            animationIndex = 0;
+            
+            // Animation từng cạnh
+            animationInterval = setInterval(() => {
+                animationIndex++;
+                drawGraph();
+                
+                if (animationIndex >= eulerianEdges.length) {
+                    clearInterval(animationInterval);
+                    animationInterval = null;
+                }
+            }, 600);
+            
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#f3d7f5';
+            resultDiv.style.borderLeft = '4px solid #e64980';
+            resultText.style.color = '#721c24';
+            resultText.innerHTML = `<strong>🔄 ${result.message}</strong>`;
+            
+            showNotification('✅ Đã tìm chu trình Euler (Hierholzer)!', 'success');
+        } else {
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#f8d7da';
+            resultDiv.style.borderLeft = '4px solid #dc3545';
+            resultText.style.color = '#721c24';
+            resultText.innerHTML = `<strong>❌ ${result.message}</strong>`;
+            
+            showNotification('❌ ' + result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Lỗi khi thực hiện Hierholzer:', error);
+        showNotification('❌ Có lỗi xảy ra', 'error');
+    }
+}
+
+// Thuật toán Ford-Fulkerson - Luồng cực đại
+async function runFordFulkerson() {
+    const source = document.getElementById('flowSource').value.trim();
+    const sink = document.getElementById('flowSink').value.trim();
+    const resultDiv = document.getElementById('algorithmResult');
+    const resultText = resultDiv.querySelector('p');
+    
+    clearAllHighlights();
+    
+    if (!source || !sink) {
+        showNotification('⚠️ Vui lòng nhập đỉnh nguồn và đỉnh đích', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/ford_fulkerson', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source, sink })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            flowEdges = result.flow_edges;
+            drawGraph();
+            
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#fff3cd';
+            resultDiv.style.borderLeft = '4px solid #fd7e14';
+            resultText.style.color = '#856404';
+            resultText.innerHTML = `<strong>💧 ${result.message}</strong><br><small>Các cạnh màu cam hiển thị luồng/khả năng</small>`;
+            
+            showNotification('✅ Đã tìm luồng cực đại!', 'success');
+        } else {
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#f8d7da';
+            resultDiv.style.borderLeft = '4px solid #dc3545';
+            resultText.style.color = '#721c24';
+            resultText.innerHTML = `<strong>❌ ${result.message}</strong>`;
+            
+            showNotification('❌ ' + result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Lỗi khi thực hiện Ford-Fulkerson:', error);
         showNotification('❌ Có lỗi xảy ra', 'error');
     }
 }

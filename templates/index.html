@@ -100,6 +100,22 @@
                 </div>
                 
                 <div class="control-section">
+                    <h3>🎯 Thuật Toán Nâng Cao</h3>
+                    <button onclick="runPrim()">Prim - Cây Khung Nhỏ Nhất</button>
+                    <button onclick="runKruskal()">Kruskal - Cây Khung Nhỏ Nhất</button>
+                    <button onclick="runFleury()">Fleury - Đường Đi Euler</button>
+                    <button onclick="runHierholzer()">Hierholzer - Chu Trình Euler</button>
+                    <div style="margin-top: 10px;">
+                        <input type="text" id="flowSource" placeholder="Nguồn (source)">
+                        <input type="text" id="flowSink" placeholder="Đích (sink)">
+                        <button onclick="runFordFulkerson()">Ford-Fulkerson - Luồng Cực Đại</button>
+                    </div>
+                    <div id="algorithmResult" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px; display: none;">
+                        <p style="margin: 0; font-size: 14px; color: #495057; white-space: pre-line;"></p>
+                    </div>
+                </div>
+                
+                <div class="control-section">
                     <button class="danger-btn" onclick="clearAll()">🗑️ Xóa Toàn Bộ</button>
                 </div>
                 
