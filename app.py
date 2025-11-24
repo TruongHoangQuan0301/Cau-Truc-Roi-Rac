@@ -380,7 +380,7 @@ def bfs_traversal():
         return jsonify({
             'success': True,
             'order': bfs_order,
-            'message': f'BFS từ {start_node}: {" → ".join(bfs_order)}',
+            'message': f'BFS từ {start_node}:\n{ascii_tree}',
             'ascii_tree': ascii_tree
         })
     except Exception as e:
@@ -430,7 +430,7 @@ def dfs_traversal():
         return jsonify({
             'success': True,
             'order': dfs_order,
-            'message': f'DFS từ {start_node}: {" → ".join(dfs_order)}',
+            'message': f'DFS từ {start_node}:\n{ascii_tree}',
             'ascii_tree': ascii_tree
         })
     except Exception as e:
