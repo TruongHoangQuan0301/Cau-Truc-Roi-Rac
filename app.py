@@ -438,8 +438,25 @@ def bfs_traversal():
                 'message': 'Đỉnh không tồn tại trong đồ thị'
             })
         
-        # Thực hiện BFS
-        bfs_order = list(nx.bfs_tree(graph_data['graph'], start_node).nodes())
+        # Thực hiện BFS thủ công để đảm bảo thứ tự đúng
+        from collections import deque
+        
+        visited = set()
+        queue = deque([start_node])
+        bfs_order = []
+        visited.add(start_node)
+        
+        while queue:
+            current = queue.popleft()
+            bfs_order.append(current)
+            
+            # Lấy các neighbor và sắp xếp theo alphabet
+            neighbors = sorted(list(graph_data['graph'].neighbors(current)))
+            
+            for neighbor in neighbors:
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append(neighbor)
         
         return jsonify({
             'success': True,
