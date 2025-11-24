@@ -374,10 +374,14 @@ def bfs_traversal():
                     visited.add(neighbor)
                     queue.append(neighbor)
         
+        # Tạo ASCII art cho BFS tree
+        ascii_tree = _build_ascii_tree(start_node, bfs_order, is_bfs=True)
+        
         return jsonify({
             'success': True,
             'order': bfs_order,
-            'message': f'BFS từ {start_node}: {" → ".join(bfs_order)}'
+            'message': f'BFS từ {start_node}: {" → ".join(bfs_order)}',
+            'ascii_tree': ascii_tree
         })
     except Exception as e:
         return jsonify({
@@ -420,10 +424,14 @@ def dfs_traversal():
         
         dfs_recursive(start_node)
         
+        # Tạo ASCII art cho DFS tree
+        ascii_tree = _build_ascii_tree(start_node, dfs_order, is_bfs=False)
+        
         return jsonify({
             'success': True,
             'order': dfs_order,
-            'message': f'DFS từ {start_node}: {" → ".join(dfs_order)}'
+            'message': f'DFS từ {start_node}: {" → ".join(dfs_order)}',
+            'ascii_tree': ascii_tree
         })
     except Exception as e:
         return jsonify({
@@ -784,6 +792,64 @@ def ford_fulkerson():
             'success': False,
             'message': f'Lỗi: {str(e)}'
         })
+
+def _build_ascii_tree(root, order, is_bfs=True):
+    """Tạo ASCII tree representation cho BFS/DFS traversal"""
+    if not order:
+        return ""
+    
+    # Build parent-child relationships
+    from collections import defaultdict, deque
+    
+    children = defaultdict(list)
+    visited = set([root])
+    
+    if is_bfs:
+        # BFS order
+        queue = deque([root])
+        order_set = set(order)
+        
+        while queue:
+            current = queue.popleft()
+            neighbors = sorted(list(graph_data['graph'].neighbors(current)))
+            
+            for neighbor in neighbors:
+                if neighbor not in visited and neighbor in order_set:
+                    children[current].append(neighbor)
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+    else:
+        # DFS order - build tree based on traversal order
+        parent_map = {root: None}
+        
+        def build_dfs_tree(node):
+            neighbors = sorted(list(graph_data['graph'].neighbors(node)))
+            for neighbor in neighbors:
+                if neighbor not in visited and neighbor in order:
+                    visited.add(neighbor)
+                    children[node].append(neighbor)
+                    parent_map[neighbor] = node
+                    build_dfs_tree(neighbor)
+        
+        build_dfs_tree(root)
+    
+    # Generate ASCII art
+    lines = []
+    
+    def draw_tree(node, prefix="", is_last=True):
+        # Current node
+        connector = "└── " if is_last else "├── "
+        lines.append(prefix + connector + node if prefix else node)
+        
+        # Children
+        child_list = children.get(node, [])
+        for i, child in enumerate(child_list):
+            is_last_child = (i == len(child_list) - 1)
+            extension = "    " if is_last else "│   "
+            draw_tree(child, prefix + extension, is_last_child)
+    
+    draw_tree(root)
+    return "\n".join(lines)
 
 if __name__ == '__main__':
     import os
