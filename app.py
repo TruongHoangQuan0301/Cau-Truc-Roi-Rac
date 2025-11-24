@@ -403,8 +403,22 @@ def dfs_traversal():
                 'message': 'Đỉnh không tồn tại trong đồ thị'
             })
         
-        # Thực hiện DFS
-        dfs_order = list(nx.dfs_tree(graph_data['graph'], start_node).nodes())
+        # Thực hiện DFS bằng đệ quy
+        visited = set()
+        dfs_order = []
+        
+        def dfs_recursive(node):
+            visited.add(node)
+            dfs_order.append(node)
+            
+            # Lấy các neighbor và sắp xếp theo alphabet
+            neighbors = sorted(list(graph_data['graph'].neighbors(node)))
+            
+            for neighbor in neighbors:
+                if neighbor not in visited:
+                    dfs_recursive(neighbor)
+        
+        dfs_recursive(start_node)
         
         return jsonify({
             'success': True,
