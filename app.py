@@ -198,17 +198,10 @@ def toggle_directed():
         'message': f'Đã chuyển sang đồ thị {"có hướng" if is_directed else "vô hướng"}'
     })
 
-@app.route('/api/save_graph', methods=['POST'])
-def save_graph():
+@app.route('/api/export_graph', methods=['GET'])
+def export_graph():
     try:
-        data = request.json
-        filename = data.get('filename', f'graph_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json')
-        
-        # Đảm bảo filename có đuôi .json
-        if not filename.endswith('.json'):
-            filename += '.json'
-        
-        # Tạo dữ liệu để lưu
+        # Tạo dữ liệu để xuất
         save_data = {
             'nodes': [],
             'edges': [],
@@ -233,45 +226,26 @@ def save_graph():
                 'weight': weight
             })
         
-        # Lưu file vào thư mục saved_graphs
-        filepath = os.path.join(GRAPHS_FOLDER, filename)
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(save_data, f, indent=2, ensure_ascii=False)
-        
         return jsonify({
             'success': True,
-            'filename': filename,
-            'message': f'Đã lưu đồ thị vào {filename}'
+            'data': save_data
         })
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Lỗi khi lưu: {str(e)}'
+            'message': f'Lỗi khi xuất: {str(e)}'
         })
 
-@app.route('/api/load_graph', methods=['POST'])
-def load_graph():
+@app.route('/api/import_graph', methods=['POST'])
+def import_graph():
     try:
-        data = request.json
-        filename = data.get('filename')
+        graph_file_data = request.json
         
-        if not filename:
+        if not graph_file_data:
             return jsonify({
                 'success': False,
-                'message': 'Vui lòng chọn file'
+                'message': 'Dữ liệu không hợp lệ'
             })
-        
-        # Đọc file từ thư mục saved_graphs
-        filepath = os.path.join(GRAPHS_FOLDER, filename)
-        
-        if not os.path.exists(filepath):
-            return jsonify({
-                'success': False,
-                'message': f'File {filename} không tồn tại'
-            })
-        
-        with open(filepath, 'r', encoding='utf-8') as f:
-            graph_file_data = json.load(f)
         
         # Xóa đồ thị hiện tại
         graph_data['graph'].clear()
@@ -305,70 +279,12 @@ def load_graph():
         
         return jsonify({
             'success': True,
-            'message': f'Đã tải đồ thị {filename} thành công'
+            'message': 'Đã tải đồ thị thành công'
         })
     except Exception as e:
         return jsonify({
             'success': False,
             'message': f'Lỗi khi tải: {str(e)}'
-        })
-
-@app.route('/api/list_saved_graphs', methods=['GET'])
-def list_saved_graphs():
-    try:
-        files = []
-        if os.path.exists(GRAPHS_FOLDER):
-            for filename in os.listdir(GRAPHS_FOLDER):
-                if filename.endswith('.json'):
-                    filepath = os.path.join(GRAPHS_FOLDER, filename)
-                    files.append({
-                        'name': filename,
-                        'size': os.path.getsize(filepath),
-                        'modified': datetime.fromtimestamp(os.path.getmtime(filepath)).strftime('%Y-%m-%d %H:%M:%S')
-                    })
-        
-        # Sắp xếp theo thời gian sửa đổi (mới nhất trước)
-        files.sort(key=lambda x: x['modified'], reverse=True)
-        
-        return jsonify({
-            'success': True,
-            'files': files
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Lỗi khi lấy danh sách: {str(e)}'
-        })
-
-@app.route('/api/delete_saved_graph', methods=['POST'])
-def delete_saved_graph():
-    try:
-        data = request.json
-        filename = data.get('filename')
-        
-        if not filename:
-            return jsonify({
-                'success': False,
-                'message': 'Vui lòng chọn file'
-            })
-        
-        filepath = os.path.join(GRAPHS_FOLDER, filename)
-        
-        if os.path.exists(filepath):
-            os.remove(filepath)
-            return jsonify({
-                'success': True,
-                'message': f'Đã xóa {filename}'
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'message': f'File {filename} không tồn tại'
-            })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Lỗi khi xóa: {str(e)}'
         })
 
 @app.route('/api/shortest_path', methods=['POST'])

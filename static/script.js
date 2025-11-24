@@ -551,23 +551,30 @@ async function saveGraph() {
     }
     
     try {
-        const response = await fetch('/api/save_graph', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filename: filename })
-        });
-        
+        const response = await fetch('/api/export_graph');
         const result = await response.json();
         
         if (result.success) {
+            // Tạo blob và tải xuống
+            const dataStr = JSON.stringify(result.data, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename.endsWith('.json') ? filename : filename + '.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
             closeModal('saveModal');
-            showNotification('✅ ' + result.message, 'success');
+            showNotification('✅ Đã tải file về máy thành công!', 'success');
         } else {
             alert('❌ ' + result.message);
         }
     } catch (error) {
-        console.error('Lỗi khi lưu đồ thị:', error);
-        showNotification('❌ Có lỗi xảy ra khi lưu đồ thị', 'error');
+        console.error('Lỗi khi xuất đồ thị:', error);
+        showNotification('❌ Có lỗi xảy ra khi xuất đồ thị', 'error');
     }
 }
 
@@ -582,10 +589,8 @@ function showSaveDialog() {
 }
 
 // Hiển thị dialog tải
-async function showLoadDialog() {
-    const modal = document.getElementById('loadModal');
-    modal.style.display = 'block';
-    await loadFileList();
+function showLoadDialog() {
+    document.getElementById('fileInput').click();
 }
 
 // Đóng modal
@@ -593,60 +598,49 @@ function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
 }
 
-// Tải danh sách file
-async function loadFileList() {
-    try {
-        const response = await fetch('/api/list_saved_graphs');
-        const result = await response.json();
-        
-        const fileList = document.getElementById('fileList');
-        
-        if (result.success && result.files.length > 0) {
-            fileList.innerHTML = result.files.map(file => `
-                <div class="file-item">
-                    <div class="file-item-header">
-                        <span>📄 ${file.name}</span>
-                        <div class="file-item-actions">
-                            <button class="btn-load" onclick="loadGraphByName('${file.name}')">Tải</button>
-                            <button class="btn-delete" onclick="deleteGraphFile('${file.name}')">Xóa</button>
-                        </div>
-                    </div>
-                    <div class="file-item-info">
-                        ${(file.size / 1024).toFixed(2)} KB • ${file.modified}
-                    </div>
-                </div>
-            `).join('');
-        } else {
-            fileList.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 20px;">Chưa có đồ thị nào được lưu</p>';
-        }
-    } catch (error) {
-        console.error('Lỗi khi tải danh sách:', error);
-        document.getElementById('fileList').innerHTML = '<p style="text-align: center; color: red;">Có lỗi xảy ra!</p>';
+// Xử lý upload file
+async function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!file.name.endsWith('.json')) {
+        alert('⚠️ Vui lòng chọn file JSON!');
+        return;
     }
-}
-
-// Tải đồ thị theo tên
-async function loadGraphByName(filename) {
+    
     try {
-        const response = await fetch('/api/load_graph', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filename: filename })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            await loadGraph();
-            closeModal('loadModal');
-            showNotification('✅ ' + result.message, 'success');
-        } else {
-            alert('❌ ' + result.message);
-        }
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const graphData = JSON.parse(e.target.result);
+                
+                const response = await fetch('/api/import_graph', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(graphData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    await loadGraph();
+                    showNotification('✅ ' + result.message, 'success');
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (error) {
+                console.error('Lỗi khi parse JSON:', error);
+                alert('❌ File không đúng định dạng!');
+            }
+        };
+        reader.readAsText(file);
     } catch (error) {
-        console.error('Lỗi khi tải đồ thị:', error);
-        showNotification('❌ Có lỗi xảy ra khi tải đồ thị', 'error');
+        console.error('Lỗi khi đọc file:', error);
+        showNotification('❌ Có lỗi xảy ra khi đọc file', 'error');
     }
+    
+    // Reset input
+    event.target.value = '';
 }
 
 // Xóa file đồ thị
