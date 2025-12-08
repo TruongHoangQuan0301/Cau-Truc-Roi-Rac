@@ -154,22 +154,24 @@
     
     <!-- Modal biểu diễn đồ thị -->
     <div id="representationModal" class="modal">
-        <div class="modal-content" style="max-width: 800px;">
-            <h2>📋 Các Phương Pháp Biểu Diễn Đồ Thị</h2>
+        <div class="modal-content" style="max-width: 900px; max-height: 85vh; display: flex; flex-direction: column;">
+            <h2 style="margin: 0 0 20px 0;">📋 Các Phương Pháp Biểu Diễn Đồ Thị</h2>
             
-            <div style="margin: 20px 0;">
-                <h3 style="color: #495057; border-bottom: 2px solid #667eea; padding-bottom: 10px;">1️⃣ Ma Trận Kề (Adjacency Matrix)</h3>
-                <div id="matrixRepresentation" style="overflow-x: auto; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;"></div>
-            </div>
-            
-            <div style="margin: 20px 0;">
-                <h3 style="color: #495057; border-bottom: 2px solid #667eea; padding-bottom: 10px;">2️⃣ Danh Sách Kề (Adjacency List)</h3>
-                <div id="listRepresentation" style="overflow-x: auto; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;"></div>
-            </div>
-            
-            <div style="margin: 20px 0;">
-                <h3 style="color: #495057; border-bottom: 2px solid #667eea; padding-bottom: 10px;">3️⃣ Danh Sách Cạnh (Edge List)</h3>
-                <div id="edgeRepresentation" style="overflow-x: auto; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;"></div>
+            <div style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                <div style="margin: 20px 0;">
+                    <h3 style="color: #495057; border-bottom: 2px solid #667eea; padding-bottom: 10px;">1️⃣ Ma Trận Kề (Adjacency Matrix)</h3>
+                    <div id="matrixRepresentation" style="overflow-x: auto; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;"></div>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <h3 style="color: #495057; border-bottom: 2px solid #667eea; padding-bottom: 10px;">2️⃣ Danh Sách Kề (Adjacency List)</h3>
+                    <div id="listRepresentation" style="overflow-x: auto; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;"></div>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <h3 style="color: #495057; border-bottom: 2px solid #667eea; padding-bottom: 10px;">3️⃣ Danh Sách Cạnh (Edge List)</h3>
+                    <div id="edgeRepresentation" style="overflow-x: auto; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;"></div>
+                </div>
             </div>
             
             <button onclick="closeModal('representationModal')" style="width: 100%; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; margin-top: 15px;">Đóng</button>
