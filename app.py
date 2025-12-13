@@ -1,3 +1,5 @@
+
+
 from flask import Flask, render_template, request, jsonify
 import networkx as nx
 import json
@@ -6,30 +8,31 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# Tạo thư mục lưu đồ thị
 GRAPHS_FOLDER = 'saved_graphs'
 if not os.path.exists(GRAPHS_FOLDER):
     os.makedirs(GRAPHS_FOLDER)
 
-# Lưu trữ đồ thị trong bộ nhớ
 graph_data = {
     'graph': nx.Graph(),
     'positions': {},
     'selected_node': None,
-    'is_directed': False  # Mặc định là đồ thị vô hướng
+    'is_directed': False
 }
 
 @app.route('/')
 def index():
+    
     return render_template('index.html')
 
 @app.route('/api/add_node', methods=['POST'])
 def add_node():
+    
     data = request.json
     node_id = data.get('node_id')
     x = data.get('x', 400)
     y = data.get('y', 300)
     
+
     if node_id and node_id not in graph_data['graph']:
         graph_data['graph'].add_node(node_id)
         graph_data['positions'][node_id] = {'x': x, 'y': y}
@@ -39,24 +42,47 @@ def add_node():
 
 @app.route('/api/add_edge', methods=['POST'])
 def add_edge():
+    
     data = request.json
     node1 = data.get('node1')
     node2 = data.get('node2')
     weight = data.get('weight', 1)
     
-    if node1 in graph_data['graph'] and node2 in graph_data['graph']:
-        graph_data['graph'].add_edge(node1, node2, weight=weight)
-        return jsonify({'success': True, 'message': 'Cạnh đã được thêm'})
+
+    if not (node1 in graph_data['graph'] and node2 in graph_data['graph']):
+        return jsonify({'success': False, 'message': 'Một hoặc cả hai node không tồn tại'})
     
-    return jsonify({'success': False, 'message': 'Một hoặc cả hai node không tồn tại'})
+
+    if not graph_data['is_directed']:
+        graph_data['graph'].add_edge(node1, node2, weight=weight)
+        return jsonify({'success': True, 'message': f'Cạnh {node1}-{node2} đã được thêm'})
+    
+
+    direction = data.get('direction', 'both')
+    
+    if direction == 'one_way_1_to_2':
+
+        graph_data['graph'].add_edge(node1, node2, weight=weight)
+        return jsonify({'success': True, 'message': f'Cạnh {node1} → {node2} đã được thêm'})
+    elif direction == 'one_way_2_to_1':
+
+        graph_data['graph'].add_edge(node2, node1, weight=weight)
+        return jsonify({'success': True, 'message': f'Cạnh {node2} → {node1} đã được thêm'})
+    else:
+
+        graph_data['graph'].add_edge(node1, node2, weight=weight)
+        graph_data['graph'].add_edge(node2, node1, weight=weight)
+        return jsonify({'success': True, 'message': f'Cạnh 2 chiều {node1} ↔ {node2} đã được thêm'})
 
 @app.route('/api/remove_node', methods=['POST'])
 def remove_node():
+    
     data = request.json
     node_id = data.get('node_id')
     
     if node_id in graph_data['graph']:
         graph_data['graph'].remove_node(node_id)
+
         if node_id in graph_data['positions']:
             del graph_data['positions'][node_id]
         return jsonify({'success': True, 'message': f'Đã xóa đỉnh {node_id}'})
@@ -65,6 +91,7 @@ def remove_node():
 
 @app.route('/api/remove_edge', methods=['POST'])
 def remove_edge():
+    
     data = request.json
     node1 = data.get('node1')
     node2 = data.get('node2')
@@ -80,7 +107,9 @@ def remove_edge():
 
 @app.route('/api/get_graph', methods=['GET'])
 def get_graph():
+    
     nodes = []
+
     for node_id in graph_data['graph'].nodes():
         pos = graph_data['positions'].get(node_id, {'x': 400, 'y': 300})
         nodes.append({
@@ -90,6 +119,7 @@ def get_graph():
         })
     
     edges = []
+
     for edge in graph_data['graph'].edges():
         weight = graph_data['graph'].get_edge_data(edge[0], edge[1]).get('weight', 1)
         edges.append({
@@ -98,11 +128,11 @@ def get_graph():
             'weight': weight
         })
     
-    # Tính thống kê
+
     num_nodes = graph_data['graph'].number_of_nodes()
     num_edges = graph_data['graph'].number_of_edges()
     
-    # Xử lý is_connected cho cả đồ thị có hướng và vô hướng
+
     is_connected = False
     if num_nodes > 0:
         if graph_data['is_directed']:
@@ -126,8 +156,12 @@ def get_graph():
 
 @app.route('/api/spring_layout', methods=['POST'])
 def spring_layout():
+    
     if graph_data['graph'].number_of_nodes() > 0:
+
         positions = nx.spring_layout(graph_data['graph'], k=1, iterations=50, seed=42)
+        
+
         for node_id, (x, y) in positions.items():
             graph_data['positions'][node_id] = {
                 'x': (x + 1) * 400,
@@ -139,8 +173,12 @@ def spring_layout():
 
 @app.route('/api/circular_layout', methods=['POST'])
 def circular_layout():
+    
     if graph_data['graph'].number_of_nodes() > 0:
+
         positions = nx.circular_layout(graph_data['graph'])
+        
+
         for node_id, (x, y) in positions.items():
             graph_data['positions'][node_id] = {
                 'x': (x + 1) * 400,
@@ -152,6 +190,7 @@ def circular_layout():
 
 @app.route('/api/clear_all', methods=['POST'])
 def clear_all():
+    
     graph_data['graph'].clear()
     graph_data['positions'].clear()
     graph_data['selected_node'] = None
@@ -159,6 +198,7 @@ def clear_all():
 
 @app.route('/api/update_position', methods=['POST'])
 def update_position():
+    
     data = request.json
     node_id = data.get('node_id')
     x = data.get('x')
@@ -172,23 +212,27 @@ def update_position():
 
 @app.route('/api/toggle_directed', methods=['POST'])
 def toggle_directed():
+    
     data = request.json
     is_directed = data.get('is_directed', False)
     
-    # Lưu vị trí hiện tại
+
     old_positions = graph_data['positions'].copy()
     
-    # Tạo đồ thị mới
+
     if is_directed:
         new_graph = nx.DiGraph()
     else:
         new_graph = nx.Graph()
     
-    # Sao chép nodes và edges
+
     new_graph.add_nodes_from(graph_data['graph'].nodes())
+    
+
     for edge in graph_data['graph'].edges(data=True):
         new_graph.add_edge(edge[0], edge[1], **edge[2])
     
+
     graph_data['graph'] = new_graph
     graph_data['positions'] = old_positions
     graph_data['is_directed'] = is_directed
@@ -200,15 +244,16 @@ def toggle_directed():
 
 @app.route('/api/export_graph', methods=['GET'])
 def export_graph():
+    
     try:
-        # Tạo dữ liệu để xuất
+
         save_data = {
             'nodes': [],
             'edges': [],
             'is_directed': graph_data['is_directed']
         }
         
-        # Lưu nodes với vị trí
+
         for node_id in graph_data['graph'].nodes():
             pos = graph_data['positions'].get(node_id, {'x': 400, 'y': 300})
             save_data['nodes'].append({
@@ -217,7 +262,7 @@ def export_graph():
                 'y': pos['y']
             })
         
-        # Lưu edges với trọng số
+
         for edge in graph_data['graph'].edges():
             weight = graph_data['graph'].get_edge_data(edge[0], edge[1]).get('weight', 1)
             save_data['edges'].append({
@@ -238,6 +283,7 @@ def export_graph():
 
 @app.route('/api/import_graph', methods=['POST'])
 def import_graph():
+    
     try:
         graph_file_data = request.json
         
@@ -247,11 +293,11 @@ def import_graph():
                 'message': 'Dữ liệu không hợp lệ'
             })
         
-        # Xóa đồ thị hiện tại
+
         graph_data['graph'].clear()
         graph_data['positions'].clear()
         
-        # Tạo đồ thị mới
+
         is_directed = graph_file_data.get('is_directed', False)
         if is_directed:
             graph_data['graph'] = nx.DiGraph()
@@ -260,7 +306,7 @@ def import_graph():
         
         graph_data['is_directed'] = is_directed
         
-        # Thêm nodes
+
         for node in graph_file_data.get('nodes', []):
             node_id = node['id']
             graph_data['graph'].add_node(node_id)
@@ -269,7 +315,7 @@ def import_graph():
                 'y': node.get('y', 300)
             }
         
-        # Thêm edges
+
         for edge in graph_file_data.get('edges', []):
             graph_data['graph'].add_edge(
                 edge['source'],
@@ -289,6 +335,7 @@ def import_graph():
 
 @app.route('/api/shortest_path', methods=['POST'])
 def shortest_path():
+    
     try:
         data = request.json
         source = data.get('source')
@@ -315,7 +362,7 @@ def shortest_path():
             })
         
         try:
-            # Tìm đường đi ngắn nhất sử dụng Dijkstra
+
             path = nx.shortest_path(graph_data['graph'], source=source, target=target, weight='weight')
             distance = nx.shortest_path_length(graph_data['graph'], source=source, target=target, weight='weight')
             
@@ -338,6 +385,7 @@ def shortest_path():
 
 @app.route('/api/bfs', methods=['POST'])
 def bfs_traversal():
+    
     try:
         data = request.json
         start_node = data.get('start_node')
@@ -354,7 +402,7 @@ def bfs_traversal():
                 'message': 'Đỉnh không tồn tại trong đồ thị'
             })
         
-        # Thực hiện BFS thủ công để đảm bảo thứ tự đúng
+
         from collections import deque
         
         visited = set()
@@ -366,21 +414,23 @@ def bfs_traversal():
             current = queue.popleft()
             bfs_order.append(current)
             
-            # Lấy các neighbor và sắp xếp theo alphabet
-            neighbors = sorted(list(graph_data['graph'].neighbors(current)))
+
+            neighbors = sorted(list(graph_data['graph'].neighbors(current)), 
+                             key=lambda n: (graph_data['positions'].get(n, {}).get('y', 0), 
+                                          graph_data['positions'].get(n, {}).get('x', 0)))
             
             for neighbor in neighbors:
                 if neighbor not in visited:
                     visited.add(neighbor)
                     queue.append(neighbor)
         
-        # Tạo ASCII art cho BFS tree
+
         ascii_tree = _build_ascii_tree(start_node, bfs_order, is_bfs=True)
         
         return jsonify({
             'success': True,
             'order': bfs_order,
-            'message': f'BFS từ {start_node}:\n{ascii_tree}',
+            'message': f'BFS từ {start_node}: {" → ".join(bfs_order)}\n\nCây BFS:\n{ascii_tree}',
             'ascii_tree': ascii_tree
         })
     except Exception as e:
@@ -391,6 +441,7 @@ def bfs_traversal():
 
 @app.route('/api/dfs', methods=['POST'])
 def dfs_traversal():
+    
     try:
         data = request.json
         start_node = data.get('start_node')
@@ -407,16 +458,19 @@ def dfs_traversal():
                 'message': 'Đỉnh không tồn tại trong đồ thị'
             })
         
-        # Thực hiện DFS bằng đệ quy
+
         visited = set()
         dfs_order = []
         
         def dfs_recursive(node):
+            
             visited.add(node)
             dfs_order.append(node)
             
-            # Lấy các neighbor và sắp xếp theo alphabet
-            neighbors = sorted(list(graph_data['graph'].neighbors(node)))
+
+            neighbors = sorted(list(graph_data['graph'].neighbors(node)),
+                             key=lambda n: (graph_data['positions'].get(n, {}).get('y', 0),
+                                          graph_data['positions'].get(n, {}).get('x', 0)))
             
             for neighbor in neighbors:
                 if neighbor not in visited:
@@ -424,13 +478,13 @@ def dfs_traversal():
         
         dfs_recursive(start_node)
         
-        # Tạo ASCII art cho DFS tree
+
         ascii_tree = _build_ascii_tree(start_node, dfs_order, is_bfs=False)
         
         return jsonify({
             'success': True,
             'order': dfs_order,
-            'message': f'DFS từ {start_node}:\n{ascii_tree}',
+            'message': f'DFS từ {start_node}: {" → ".join(dfs_order)}\n\nCây DFS:\n{ascii_tree}',
             'ascii_tree': ascii_tree
         })
     except Exception as e:
@@ -441,6 +495,7 @@ def dfs_traversal():
 
 @app.route('/api/check_bipartite', methods=['GET'])
 def check_bipartite():
+    
     try:
         if graph_data['graph'].number_of_nodes() == 0:
             return jsonify({
@@ -448,11 +503,11 @@ def check_bipartite():
                 'message': 'Đồ thị rỗng'
             })
         
-        # Kiểm tra đồ thị 2 phía
+
         is_bipartite = nx.is_bipartite(graph_data['graph'])
         
         if is_bipartite:
-            # Lấy 2 tập đỉnh
+
             color_dict = nx.bipartite.color(graph_data['graph'])
             set1 = [node for node, color in color_dict.items() if color == 0]
             set2 = [node for node, color in color_dict.items() if color == 1]
@@ -479,6 +534,7 @@ def check_bipartite():
 
 @app.route('/api/get_representations', methods=['GET'])
 def get_representations():
+    
     try:
         if graph_data['graph'].number_of_nodes() == 0:
             return jsonify({
@@ -486,11 +542,11 @@ def get_representations():
                 'message': 'Đồ thị rỗng'
             })
         
-        # Lấy danh sách các node
+
         nodes = sorted(list(graph_data['graph'].nodes()))
         n = len(nodes)
         
-        # 1. Ma trận kề (Adjacency Matrix)
+
         adj_matrix = []
         node_to_idx = {node: i for i, node in enumerate(nodes)}
         
@@ -502,7 +558,7 @@ def get_representations():
                     row[j] = weight
             adj_matrix.append(row)
         
-        # 2. Danh sách kề (Adjacency List)
+
         adj_list = {}
         for node in nodes:
             neighbors = []
@@ -511,7 +567,7 @@ def get_representations():
                 neighbors.append({'node': neighbor, 'weight': weight})
             adj_list[node] = neighbors
         
-        # 3. Danh sách cạnh (Edge List)
+
         edge_list = []
         for edge in graph_data['graph'].edges():
             weight = graph_data['graph'].get_edge_data(edge[0], edge[1]).get('weight', 1)
@@ -537,6 +593,7 @@ def get_representations():
 
 @app.route('/api/prim_mst', methods=['GET'])
 def prim_mst():
+    
     try:
         if graph_data['graph'].number_of_nodes() == 0:
             return jsonify({
@@ -556,7 +613,7 @@ def prim_mst():
                 'message': 'Đồ thị không liên thông'
             })
         
-        # Tính MST bằng Prim
+
         mst = nx.minimum_spanning_tree(graph_data['graph'], algorithm='prim', weight='weight')
         
         mst_edges = []
@@ -584,6 +641,7 @@ def prim_mst():
 
 @app.route('/api/kruskal_mst', methods=['GET'])
 def kruskal_mst():
+    
     try:
         if graph_data['graph'].number_of_nodes() == 0:
             return jsonify({
@@ -603,7 +661,7 @@ def kruskal_mst():
                 'message': 'Đồ thị không liên thông'
             })
         
-        # Tính MST bằng Kruskal
+
         mst = nx.minimum_spanning_tree(graph_data['graph'], algorithm='kruskal', weight='weight')
         
         mst_edges = []
@@ -631,6 +689,7 @@ def kruskal_mst():
 
 @app.route('/api/eulerian_path', methods=['GET'])
 def eulerian_path():
+    
     try:
         if graph_data['graph'].number_of_nodes() == 0:
             return jsonify({
@@ -638,9 +697,11 @@ def eulerian_path():
                 'message': 'Đồ thị rỗng'
             })
         
-        # Kiểm tra đồ thị Euler (Fleury)
+
         if graph_data['is_directed']:
+
             if nx.is_eulerian(graph_data['graph']):
+
                 path = list(nx.eulerian_circuit(graph_data['graph']))
                 path_nodes = [path[0][0]] + [edge[1] for edge in path]
                 return jsonify({
@@ -652,6 +713,7 @@ def eulerian_path():
                     'message': f'Chu trình Euler (Fleury): {" → ".join(path_nodes)}'
                 })
             elif nx.has_eulerian_path(graph_data['graph']):
+
                 path = list(nx.eulerian_path(graph_data['graph']))
                 path_nodes = [path[0][0]] + [edge[1] for edge in path]
                 return jsonify({
@@ -668,7 +730,9 @@ def eulerian_path():
                     'message': 'Đồ thị không có đường đi Euler'
                 })
         else:
+
             if nx.is_eulerian(graph_data['graph']):
+
                 path = list(nx.eulerian_circuit(graph_data['graph']))
                 path_nodes = [path[0][0]] + [edge[1] for edge in path]
                 return jsonify({
@@ -680,6 +744,7 @@ def eulerian_path():
                     'message': f'Chu trình Euler (Fleury): {" → ".join(path_nodes)}'
                 })
             elif nx.has_eulerian_path(graph_data['graph']):
+
                 path = list(nx.eulerian_path(graph_data['graph']))
                 path_nodes = [path[0][0]] + [edge[1] for edge in path]
                 return jsonify({
@@ -703,6 +768,7 @@ def eulerian_path():
 
 @app.route('/api/hierholzer', methods=['GET'])
 def hierholzer():
+    
     try:
         if graph_data['graph'].number_of_nodes() == 0:
             return jsonify({
@@ -710,13 +776,14 @@ def hierholzer():
                 'message': 'Đồ thị rỗng'
             })
         
-        # Hierholzer - chỉ cho chu trình Euler
+
         if not nx.is_eulerian(graph_data['graph']):
             return jsonify({
                 'success': False,
                 'message': 'Hierholzer chỉ áp dụng cho chu trình Euler (tất cả đỉnh có bậc chẵn)'
             })
         
+
         path = list(nx.eulerian_circuit(graph_data['graph']))
         path_nodes = [path[0][0]] + [edge[1] for edge in path]
         
@@ -736,6 +803,7 @@ def hierholzer():
 
 @app.route('/api/ford_fulkerson', methods=['POST'])
 def ford_fulkerson():
+    
     try:
         data = request.json
         source = data.get('source')
@@ -765,10 +833,10 @@ def ford_fulkerson():
                 'message': 'Ford-Fulkerson yêu cầu đồ thị có hướng'
             })
         
-        # Tạo đồ thị với capacity (trọng số = capacity)
+
         flow_value, flow_dict = nx.maximum_flow(graph_data['graph'], source, sink, capacity='weight')
         
-        # Lấy các cạnh có flow > 0
+
         flow_edges = []
         for u in flow_dict:
             for v in flow_dict[u]:
@@ -794,24 +862,27 @@ def ford_fulkerson():
         })
 
 def _build_ascii_tree(root, order, is_bfs=True):
-    """Tạo ASCII tree representation cho BFS/DFS traversal"""
+    
     if not order:
         return ""
     
-    # Build parent-child relationships
     from collections import defaultdict, deque
     
+
     children = defaultdict(list)
     visited = set([root])
     
     if is_bfs:
-        # BFS order
+
         queue = deque([root])
         order_set = set(order)
         
         while queue:
             current = queue.popleft()
-            neighbors = sorted(list(graph_data['graph'].neighbors(current)))
+
+            neighbors = sorted(list(graph_data['graph'].neighbors(current)),
+                             key=lambda n: (graph_data['positions'].get(n, {}).get('y', 0),
+                                          graph_data['positions'].get(n, {}).get('x', 0)))
             
             for neighbor in neighbors:
                 if neighbor not in visited and neighbor in order_set:
@@ -819,11 +890,15 @@ def _build_ascii_tree(root, order, is_bfs=True):
                     visited.add(neighbor)
                     queue.append(neighbor)
     else:
-        # DFS order - build tree based on traversal order
+
         parent_map = {root: None}
         
         def build_dfs_tree(node):
-            neighbors = sorted(list(graph_data['graph'].neighbors(node)))
+            
+
+            neighbors = sorted(list(graph_data['graph'].neighbors(node)),
+                             key=lambda n: (graph_data['positions'].get(n, {}).get('y', 0),
+                                          graph_data['positions'].get(n, {}).get('x', 0)))
             for neighbor in neighbors:
                 if neighbor not in visited and neighbor in order:
                     visited.add(neighbor)
@@ -833,18 +908,22 @@ def _build_ascii_tree(root, order, is_bfs=True):
         
         build_dfs_tree(root)
     
-    # Generate ASCII art
+
     lines = []
     
     def draw_tree(node, prefix="", is_last=True):
-        # Current node
+        
+
         connector = "└── " if is_last else "├── "
+
         lines.append(prefix + connector + node if prefix else node)
         
-        # Children
+
         child_list = children.get(node, [])
         for i, child in enumerate(child_list):
+
             is_last_child = (i == len(child_list) - 1)
+
             extension = "    " if is_last else "│   "
             draw_tree(child, prefix + extension, is_last_child)
     
@@ -852,6 +931,7 @@ def _build_ascii_tree(root, order, is_bfs=True):
     return "\n".join(lines)
 
 if __name__ == '__main__':
+    
     import os
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
