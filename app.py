@@ -425,13 +425,10 @@ def bfs_traversal():
                     queue.append(neighbor)
         
 
-        ascii_tree = _build_ascii_tree(start_node, bfs_order, is_bfs=True)
-        
         return jsonify({
             'success': True,
             'order': bfs_order,
-            'message': f'BFS từ {start_node}: {" → ".join(bfs_order)}\n\nCây BFS:\n{ascii_tree}',
-            'ascii_tree': ascii_tree
+            'message': f'BFS từ {start_node}: {" → ".join(bfs_order)}'
         })
     except Exception as e:
         return jsonify({
@@ -479,13 +476,10 @@ def dfs_traversal():
         dfs_recursive(start_node)
         
 
-        ascii_tree = _build_ascii_tree(start_node, dfs_order, is_bfs=False)
-        
         return jsonify({
             'success': True,
             'order': dfs_order,
-            'message': f'DFS từ {start_node}: {" → ".join(dfs_order)}\n\nCây DFS:\n{ascii_tree}',
-            'ascii_tree': ascii_tree
+            'message': f'DFS từ {start_node}: {" → ".join(dfs_order)}'
         })
     except Exception as e:
         return jsonify({
