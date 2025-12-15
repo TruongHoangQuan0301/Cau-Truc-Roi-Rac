@@ -177,8 +177,8 @@ function drawGraph() {
                 drawArrow(ctx, sourceNode.x, sourceNode.y, targetNode.x, targetNode.y);
             }
             
-            // Vẽ trọng số
-            if (edge.weight !== 1) {
+            // Vẽ trọng số chỉ khi edge có trọng số
+            if (edge.has_weight) {
                 const midX = (sourceNode.x + targetNode.x) / 2;
                 const midY = (sourceNode.y + targetNode.y) / 2;
                 
@@ -305,6 +305,20 @@ async function toggleDirected() {
     }
 }
 
+// Hiển thị/ẩn input trọng số
+function toggleWeightInput() {
+    const checkbox = document.getElementById('hasWeight');
+    const weightInput = document.getElementById('weight');
+    
+    if (checkbox.checked) {
+        weightInput.style.display = 'block';
+        weightInput.value = '1';
+    } else {
+        weightInput.style.display = 'none';
+        weightInput.value = '1';
+    }
+}
+
 // Hiển thị thông báo đẹp
 function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
@@ -369,7 +383,8 @@ async function addNode() {
 async function addEdge() {
     const node1 = document.getElementById('node1').value.trim();
     const node2 = document.getElementById('node2').value.trim();
-    const weight = parseFloat(document.getElementById('weight').value);
+    const hasWeight = document.getElementById('hasWeight').checked;
+    const weight = hasWeight ? parseFloat(document.getElementById('weight').value) : 1;
     
     if (!node1 || !node2) {
         alert('⚠️ Vui lòng nhập đầy đủ hai đỉnh cần nối (ví dụ: A và B)');
@@ -380,7 +395,7 @@ async function addEdge() {
         const response = await fetch('/api/add_edge', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ node1: node1, node2: node2, weight: weight })
+            body: JSON.stringify({ node1: node1, node2: node2, weight: weight, has_weight: hasWeight })
         });
         
         const result = await response.json();
@@ -390,7 +405,11 @@ async function addEdge() {
             document.getElementById('node2').value = '';
             document.getElementById('weight').value = '1';
             await loadGraph();
-            showNotification(`✅ Đã nối cạnh ${node1} - ${node2} (trọng số: ${weight})`, 'success');
+            if (hasWeight) {
+                showNotification(`✅ Đã nối cạnh ${node1} - ${node2} (trọng số: ${weight})`, 'success');
+            } else {
+                showNotification(`✅ Đã nối cạnh ${node1} - ${node2}`, 'success');
+            }
         } else {
             alert('❌ ' + result.message);
         }

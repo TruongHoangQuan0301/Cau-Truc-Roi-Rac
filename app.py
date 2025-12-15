@@ -47,6 +47,7 @@ def add_edge():
     node1 = data.get('node1')
     node2 = data.get('node2')
     weight = data.get('weight', 1)
+    has_weight = data.get('has_weight', False)
     
 
     if not (node1 in graph_data['graph'] and node2 in graph_data['graph']):
@@ -54,7 +55,7 @@ def add_edge():
     
 
     if not graph_data['is_directed']:
-        graph_data['graph'].add_edge(node1, node2, weight=weight)
+        graph_data['graph'].add_edge(node1, node2, weight=weight, has_weight=has_weight)
         return jsonify({'success': True, 'message': f'Cạnh {node1}-{node2} đã được thêm'})
     
 
@@ -62,16 +63,16 @@ def add_edge():
     
     if direction == 'one_way_1_to_2':
 
-        graph_data['graph'].add_edge(node1, node2, weight=weight)
+        graph_data['graph'].add_edge(node1, node2, weight=weight, has_weight=has_weight)
         return jsonify({'success': True, 'message': f'Cạnh {node1} → {node2} đã được thêm'})
     elif direction == 'one_way_2_to_1':
 
-        graph_data['graph'].add_edge(node2, node1, weight=weight)
+        graph_data['graph'].add_edge(node2, node1, weight=weight, has_weight=has_weight)
         return jsonify({'success': True, 'message': f'Cạnh {node2} → {node1} đã được thêm'})
     else:
 
-        graph_data['graph'].add_edge(node1, node2, weight=weight)
-        graph_data['graph'].add_edge(node2, node1, weight=weight)
+        graph_data['graph'].add_edge(node1, node2, weight=weight, has_weight=has_weight)
+        graph_data['graph'].add_edge(node2, node1, weight=weight, has_weight=has_weight)
         return jsonify({'success': True, 'message': f'Cạnh 2 chiều {node1} ↔ {node2} đã được thêm'})
 
 @app.route('/api/remove_node', methods=['POST'])
@@ -121,11 +122,14 @@ def get_graph():
     edges = []
 
     for edge in graph_data['graph'].edges():
-        weight = graph_data['graph'].get_edge_data(edge[0], edge[1]).get('weight', 1)
+        edge_data = graph_data['graph'].get_edge_data(edge[0], edge[1])
+        weight = edge_data.get('weight', 1)
+        has_weight = edge_data.get('has_weight', False)
         edges.append({
             'source': edge[0],
             'target': edge[1],
-            'weight': weight
+            'weight': weight,
+            'has_weight': has_weight
         })
     
 
