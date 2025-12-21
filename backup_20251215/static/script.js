@@ -177,45 +177,28 @@ function drawGraph() {
                 drawArrow(ctx, sourceNode.x, sourceNode.y, targetNode.x, targetNode.y);
             }
             
-            // Luôn vẽ trọng số trên canvas
-            const midX = (sourceNode.x + targetNode.x) / 2;
-            const midY = (sourceNode.y + targetNode.y) / 2;
-            
-            // Tính offset để text không đè lên cạnh
-            const dx = targetNode.x - sourceNode.x;
-            const dy = targetNode.y - sourceNode.y;
-            const len = Math.sqrt(dx * dx + dy * dy);
-            const offsetDist = 12; // Khoảng cách từ cạnh
-            const perpX = len > 0 ? (-dy / len) * offsetDist : 0;
-            const perpY = len > 0 ? (dx / len) * offsetDist : 0;
-            
-            const textX = midX + perpX;
-            const textY = midY + perpY;
-            
-            // Vẽ nền cho text
-            const weight = edge.weight !== undefined ? edge.weight : 1;
-            const displayText = flowEdge ? `${flowEdge.flow}/${flowEdge.capacity}` : weight.toFixed(1);
-            const textWidth = ctx.measureText(displayText).width + 8;
-            
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.fillRect(textX - textWidth / 2, textY - 10, textWidth, 20);
-            ctx.strokeStyle = '#ccc';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(textX - textWidth / 2, textY - 10, textWidth, 20);
-            
-            // Hiển thị flow/capacity nếu có
-            if (flowEdge) {
-                ctx.fillStyle = '#fd7e14';
-                ctx.font = 'bold 11px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(`${flowEdge.flow}/${flowEdge.capacity}`, textX, textY);
-            } else {
-                ctx.fillStyle = edge.has_weight ? '#28a745' : '#6c757d';
-                ctx.font = 'bold 12px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(weight.toFixed(1), textX, textY);
+            // Vẽ trọng số chỉ khi edge có trọng số
+            if (edge.has_weight) {
+                const midX = (sourceNode.x + targetNode.x) / 2;
+                const midY = (sourceNode.y + targetNode.y) / 2;
+                
+                ctx.fillStyle = 'white';
+                ctx.fillRect(midX - 15, midY - 10, 30, 20);
+                
+                // Hiển thị flow/capacity nếu có
+                if (flowEdge) {
+                    ctx.fillStyle = '#fd7e14';
+                    ctx.font = 'bold 11px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(`${flowEdge.flow}/${flowEdge.capacity}`, midX, midY);
+                } else {
+                    ctx.fillStyle = '#28a745';
+                    ctx.font = 'bold 12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(edge.weight.toFixed(1), midX, midY);
+                }
             }
         }
     });

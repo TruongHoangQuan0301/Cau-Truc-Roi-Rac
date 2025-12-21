@@ -685,100 +685,6 @@ def kruskal_mst():
             'message': f'Lỗi: {str(e)}'
         })
 
-def is_bridge(graph, u, v):
-    
-    graph.remove_edge(u, v)
-    
-    if graph.is_directed():
-        is_connected = nx.is_weakly_connected(graph) if graph.number_of_nodes() > 0 else True
-    else:
-        visited = set()
-        if graph.number_of_nodes() > 0:
-            start = list(graph.nodes())[0]
-            stack = [start]
-            while stack:
-                node = stack.pop()
-                if node not in visited:
-                    visited.add(node)
-                    stack.extend(graph.neighbors(node))
-            is_connected = len(visited) == graph.number_of_nodes()
-        else:
-            is_connected = True
-    
-    graph.add_edge(u, v)
-    return not is_connected
-
-def fleury_algorithm(graph, is_directed):
-    
-    if is_directed:
-        temp_graph = nx.DiGraph(graph)
-    else:
-        temp_graph = nx.Graph(graph)
-    
-    odd_degree_nodes = []
-    for node in temp_graph.nodes():
-        if is_directed:
-            if temp_graph.in_degree(node) != temp_graph.out_degree(node):
-                odd_degree_nodes.append(node)
-        else:
-            if temp_graph.degree(node) % 2 == 1:
-                odd_degree_nodes.append(node)
-    
-    if len(odd_degree_nodes) == 0:
-        current = list(temp_graph.nodes())[0]
-        is_circuit = True
-    elif len(odd_degree_nodes) == 2:
-        if is_directed:
-            for node in odd_degree_nodes:
-                if temp_graph.out_degree(node) > temp_graph.in_degree(node):
-                    current = node
-                    break
-        else:
-            current = odd_degree_nodes[0]
-        is_circuit = False
-    else:
-        return None, None, False
-    
-    path = [current]
-    edges = []
-    
-    while temp_graph.number_of_edges() > 0:
-        if is_directed:
-            neighbors = list(temp_graph.successors(current))
-        else:
-            neighbors = list(temp_graph.neighbors(current))
-        
-        if not neighbors:
-            break
-        
-        next_node = None
-        
-        for neighbor in neighbors:
-            if not is_bridge(temp_graph, current, neighbor):
-                next_node = neighbor
-                break
-        
-        if next_node is None:
-            next_node = neighbors[0]
-        
-        edges.append((current, next_node))
-        temp_graph.remove_edge(current, next_node)
-        
-        if not is_directed and temp_graph.has_edge(next_node, current):
-            pass
-        
-        if is_directed:
-            if temp_graph.degree(current) == 0:
-                pass
-        else:
-            if temp_graph.degree(current) == 0:
-                pass
-        
-        current = next_node
-        path.append(current)
-    
-    return path, edges, is_circuit
-
 @app.route('/api/eulerian_path', methods=['GET'])
 def eulerian_path():
     
@@ -792,39 +698,30 @@ def eulerian_path():
 
         if graph_data['is_directed']:
 
-            if not nx.is_weakly_connected(graph_data['graph']):
-                return jsonify({
-                    'success': False,
-                    'message': 'Đồ thị không liên thông yếu'
-                })
+            if nx.is_eulerian(graph_data['graph']):
 
-            if nx.is_eulerian(graph_data['graph']) or nx.has_eulerian_path(graph_data['graph']):
-                path_nodes, edges, is_circuit = fleury_algorithm(graph_data['graph'], True)
-                
-                if path_nodes is None:
-                    return jsonify({
-                        'success': False,
-                        'message': 'Đồ thị không có đường đi Euler'
-                    })
-                
-                if is_circuit:
-                    return jsonify({
-                        'success': True,
-                        'path': path_nodes,
-                        'edges': [{'source': e[0], 'target': e[1]} for e in edges],
-                        'is_circuit': True,
-                        'algorithm': 'fleury',
-                        'message': f'Chu trình Euler (Fleury): {" → ".join(path_nodes)}'
-                    })
-                else:
-                    return jsonify({
-                        'success': True,
-                        'path': path_nodes,
-                        'edges': [{'source': e[0], 'target': e[1]} for e in edges],
-                        'is_circuit': False,
-                        'algorithm': 'fleury',
-                        'message': f'Đường đi Euler (Fleury): {" → ".join(path_nodes)}'
-                    })
+                path = list(nx.eulerian_circuit(graph_data['graph']))
+                path_nodes = [path[0][0]] + [edge[1] for edge in path]
+                return jsonify({
+                    'success': True,
+                    'path': path_nodes,
+                    'edges': [{'source': e[0], 'target': e[1]} for e in path],
+                    'is_circuit': True,
+                    'algorithm': 'fleury',
+                    'message': f'Chu trình Euler (Fleury): {" → ".join(path_nodes)}'
+                })
+            elif nx.has_eulerian_path(graph_data['graph']):
+
+                path = list(nx.eulerian_path(graph_data['graph']))
+                path_nodes = [path[0][0]] + [edge[1] for edge in path]
+                return jsonify({
+                    'success': True,
+                    'path': path_nodes,
+                    'edges': [{'source': e[0], 'target': e[1]} for e in path],
+                    'is_circuit': False,
+                    'algorithm': 'fleury',
+                    'message': f'Đường đi Euler (Fleury): {" → ".join(path_nodes)}'
+                })
             else:
                 return jsonify({
                     'success': False,
@@ -832,39 +729,30 @@ def eulerian_path():
                 })
         else:
 
-            if not nx.is_connected(graph_data['graph']):
-                return jsonify({
-                    'success': False,
-                    'message': 'Đồ thị không liên thông'
-                })
+            if nx.is_eulerian(graph_data['graph']):
 
-            if nx.is_eulerian(graph_data['graph']) or nx.has_eulerian_path(graph_data['graph']):
-                path_nodes, edges, is_circuit = fleury_algorithm(graph_data['graph'], False)
-                
-                if path_nodes is None:
-                    return jsonify({
-                        'success': False,
-                        'message': 'Đồ thị không có đường đi Euler'
-                    })
-                
-                if is_circuit:
-                    return jsonify({
-                        'success': True,
-                        'path': path_nodes,
-                        'edges': [{'source': e[0], 'target': e[1]} for e in edges],
-                        'is_circuit': True,
-                        'algorithm': 'fleury',
-                        'message': f'Chu trình Euler (Fleury): {" → ".join(path_nodes)}'
-                    })
-                else:
-                    return jsonify({
-                        'success': True,
-                        'path': path_nodes,
-                        'edges': [{'source': e[0], 'target': e[1]} for e in edges],
-                        'is_circuit': False,
-                        'algorithm': 'fleury',
-                        'message': f'Đường đi Euler (Fleury): {" → ".join(path_nodes)}'
-                    })
+                path = list(nx.eulerian_circuit(graph_data['graph']))
+                path_nodes = [path[0][0]] + [edge[1] for edge in path]
+                return jsonify({
+                    'success': True,
+                    'path': path_nodes,
+                    'edges': [{'source': e[0], 'target': e[1]} for e in path],
+                    'is_circuit': True,
+                    'algorithm': 'fleury',
+                    'message': f'Chu trình Euler (Fleury): {" → ".join(path_nodes)}'
+                })
+            elif nx.has_eulerian_path(graph_data['graph']):
+
+                path = list(nx.eulerian_path(graph_data['graph']))
+                path_nodes = [path[0][0]] + [edge[1] for edge in path]
+                return jsonify({
+                    'success': True,
+                    'path': path_nodes,
+                    'edges': [{'source': e[0], 'target': e[1]} for e in path],
+                    'is_circuit': False,
+                    'algorithm': 'fleury',
+                    'message': f'Đường đi Euler (Fleury): {" → ".join(path_nodes)}'
+                })
             else:
                 return jsonify({
                     'success': False,
